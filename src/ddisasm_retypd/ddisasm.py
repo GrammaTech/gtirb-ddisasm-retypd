@@ -7,6 +7,10 @@ from typing import Dict, Set, Tuple
 
 
 def filter_name(function: Function) -> str:
+    """ Do name filtering similar to that which is implemented for souffle
+    :param function: Function to get the filtered name of
+    :returns: String of filtered name
+    """
     name = function.get_name()
 
     if "@" in name or "." in name:
@@ -62,6 +66,10 @@ def get_arch_sizes(ir: gtirb.IR) -> Tuple[int, int]:
 
 
 def extract_souffle_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts and outputs to a directory as facts
+    :param ir: gtirb.IR to read souffle facts from
+    :param directory: Directory to write souffle facts to
+    """
     module = ir.modules[0]
     facts = module.aux_data["souffleFacts"].data
     outputs = module.aux_data["souffleOutputs"].data
