@@ -1,0 +1,246 @@
+.decl subtype_reg(func:symbol, ea:address, reg1:register, reg2:register)
+
+// Generate subtype relationships between registers moved between each other,
+// e.g.:
+//     EA: mov Reg_dest, Reg_src
+subtype_reg(Func, EA, Reg_src, Reg_dest) :-
+    instruction_get_operation(EA, Operation),
+    !arch.read_only_operation(Operation),
+
+    // Src
+    instruction_get_src_op(EA, _, SrcOp),
+    op_regdirect_contains_reg(SrcOp, Reg_src),
+    !op_register_bitfield(SrcOp, Reg_src),
+    !arch.pc_register(Reg_src),
+
+    // Dest
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg_dest),
+    !op_register_bitfield(DestOp, Reg_dest),
+    !arch.pc_register(Reg_dest),
+
+    Reg_dest != Reg_src,
+
+    // Find Func
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Connect def and used for reg E.g.,
+//   EA_def:  mov Reg, xxx
+//   ...
+//   EA_used: add yyy, Reg
+.decl subtype_def_use(func:symbol, ea1:address, reg1:register, ea2:address)
+subtype_def_use(Func, EA_def, Reg, EA_used):-
+    def_used(EA_def, Reg_untracked, EA_used, _),
+    EA_def != EA_used,
+    arch.track_register(Reg_untracked, Reg),
+    code_in_block(EA_def, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Utility relation to determine whether or not an instructions destination is
+// eventually dereferenced
+.decl register_derefenced(ea:address)
+register_derefenced(EA) :-
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg),
+    def_used(EA, Reg, EA_used, _),
+    (
+        data_access(EA_used, _, _, Reg, _, _, _, _)
+        ;
+        !data_access(EA_used, _, _, Reg, _, _, _, _),
+        instruction_get_src_op(EA_used, _, UsedSrcOp),
+        op_regdirect_contains_reg(UsedSrcOp, Reg),
+        register_derefenced(EA_used)
+    ).
+
+// Set a type sink for a register written to with an instruction that has a
+// type-revealing opcode. This currently uses the per-architecture opcode
+// tables from ddisasm though this could be significantly improved.
+.decl subtype_reg_typesink(func:symbol, ea:address, reg:register, sink:symbol)
+subtype_reg_typesink(Func, EA, Reg, Sink) :-
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg),
+    !op_register_bitfield(DestOp, Reg),
+    instruction_get_operation(EA, Op),
+    (
+        arch.arithmetic_operation(Op),
+        !register_derefenced(EA),
+        Sink="int"
+        ;
+        arch.logic_operation(Op),
+        !register_derefenced(EA),
+        Sink="uint"
+    ),
+    // Find Func
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Set a type sink for a register that reads from an integer. Its probably
+// safer to set the to be a uint in the type lattice?
+subtype_reg_typesink(Func, EA, Reg, "int") :-
+    instruction_get_operation(EA, Operation),
+    !arch.read_only_operation(Operation),
+
+    // Src
+    instruction_get_operation(EA, Operation),
+    instruction_get_op(EA, Imm_index, Op),
+    op_immediate(Op, _),
+    !symbolic_operand(EA, Imm_index, _, _),
+
+    // Dest
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg),
+    !op_register_bitfield(DestOp, Reg),
+    !arch.pc_register(Reg),
+
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Set a type sink from zero/sign extended integers
+subtype_reg_typesink(Func, EA, Reg, Sink) :-
+    instruction_get_operation(EA, Operation),
+    (
+        Sink="int",
+        sign_extend(Operation)
+        ;
+        Sink="uint",
+        zero_extend(Operation)
+    ),
+    // Dest
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg),
+    !op_register_bitfield(DestOp, Reg),
+    !arch.pc_register(Reg),
+
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Determine if to addresses reach eachother locally without reaching another
+// compare operator.
+.decl local_reaches_without_compare(EA_from:address, EA_to:address)
+local_reaches_without_compare(EA_from, EA_to) :-
+    local_next(EA_from, EA_to)
+    ;
+    local_next(EA_from, EA_mid),
+    instruction_get_operation(EA_mid, Op),
+    !arch.cmp_operation(Op),
+    local_reaches_without_compare(EA_mid, EA_to).
+
+// Determine pairs of instructions that compare two numbers and then jump based
+// on the set flags.
+.decl compare_and_conditional(EA_cmp:address, EA_cond:address)
+.output compare_and_conditional
+compare_and_conditional(EA_cmp, EA_cond) :-
+    arch.cmp_operation(CmpOperation),
+    instruction_get_operation(EA_cmp, CmpOperation),
+    local_reaches_without_compare(EA_cmp, EA_cond),
+    (
+        arch.jump(EA_cond)
+        ;
+        arch.conditional(EA_cond)
+    ).
+
+// Set a type sink for integers that are compared with eachother with respect
+// to signedness, i.e.:
+//     EA: CMP RAX, 4
+//         JGE label
+subtype_reg_typesink(Func, EA, Reg, Sink) :-
+    compare_and_conditional(EA, EA_cond),
+    instruction_get_operation(EA_cond, Op),
+    (
+        sign_jump(Op),
+        Sink="int"
+        ;
+        signed_conditional_move(Op),
+        Sink="int"
+        ;
+        unsigned_jump(Op),
+        Sink="uint"
+        ;
+        unsigned_conditional_move(Op),
+        Sink="uint"
+    ),
+    instruction_get_src_op(EA, _, SrcOp),
+    op_regdirect_contains_reg(SrcOp, Reg),
+    !op_register_bitfield(SrcOp, Reg),
+    !arch.pc_register(Reg),
+
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Memory access subtype relations, e.g. (in the case of Mode="store"):
+//     EA_base_def:   mov Reg, ***
+//     ...
+//     EA:            mov nbyte [Base+Offset], Reg
+.decl subtype_mem(mode:symbol, func:symbol, ea:address, reg:register, base:register, offset:number, nbytes:number)
+.output subtype_mem
+subtype_mem(Mode, Func, EA, Reg, Base, Offset, as(NBytes, number)):-
+    arch.mov(EA),
+    (
+        instruction_get_src_op(EA, _, IndOp),
+        instruction_get_dest_op(EA, _, RegOp),
+        Mode = "load"
+        ;
+        instruction_get_src_op(EA, _, RegOp),
+        instruction_get_dest_op(EA, _, IndOp),
+        Mode = "store"
+    ),
+    op_indirect(IndOp, "NONE", Base, "NONE", 1, RawOffset, NBits),
+    NBytes = NBits/8,
+    (
+        stack_pointer_tracking(EA, Base, _),
+        Offset=RawOffset+1000 // Negative numbers aren't supported
+        ;
+        !stack_pointer_tracking(EA, Base, _),
+        Offset=RawOffset
+    ),
+    (
+        op_regdirect_contains_reg(RegOp, Reg)
+        ;
+        op_immediate(RegOp, _),
+        Reg="CONSTANT"
+    ),
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Connect incoming formal arguments to their local uses intraprocedurally
+.decl subtype_reg_read(func:symbol, ea_use:address, reg:register, index:unsigned)
+.output subtype_reg_read
+subtype_reg_read(Func, EA_use, Reg, Index) :-
+    reads_unwritten_argument(Func, EA_use, Reg, Index).
+
+// Connect parameters that are passed from Func to Callee at argument Index
+// without an explicit definition
+.decl subtype_param_pass(func:symbol, callee:symbol, index:unsigned)
+.output subtype_param_pass
+subtype_param_pass(Func, Callee, Index) :-
+    writes_implicit_argument(_, _, Func, Callee, _, Index).
+
+// Connect parameters that are passed from Func to Callee that are defined at
+// EA_def in register Register for argument Index.
+.decl subtype_reg_write(func:symbol, ea_def:address, reg:register, callee:symbol, index:unsigned)
+.output subtype_reg_write
+subtype_reg_write(Func, EA_def, Reg, Callee, Index) :-
+    writes_argument_before_call(Func, EA_def, Reg, Callee, Index).
+
+// Give a subtype relation for the functions that have no returns for a cleaner
+// type output from retypd
+.decl subtype_no_return_val(func:symbol)
+subtype_no_return_val(Func) :-
+    function_symbol(_, Func),
+    !writes_return_value(Func, _).
+
+.decl subtype_called(func:symbol, ea:address, reg:register)
+.output subtype_called
+subtype_called(Func, EA, Reg) :-
+    reg_call(EA, Reg),
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).

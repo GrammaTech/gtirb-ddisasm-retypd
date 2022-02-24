@@ -1,0 +1,99 @@
+.decl debug_ea_no_subtype(ea:address, func:symbol, opcode:symbol)
+debug_ea_no_subtype(EA, Func, Opcode) :-
+    code_in_block(EA, Block),
+    !arch.jump(EA),
+    !arch.return(EA),
+    instruction_get_operation(EA, Opcode),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func),
+    !subtype_reg(_, EA, _, _),
+    !subtype_def_use(_, EA, _, _),
+    !subtype_def_use(_, _, _, EA),
+    !subtype_reg_typesink(_, EA, _, _),
+    !subtype_mem(_, _, EA, _, _, _, _),
+    !subtype_reg_read(_, EA, _, _),
+    !subtype_reg_write(_, EA, _, _, _),
+    !subtype_called(_, EA, _).
+
+.decl comment(EA:address, comment:symbol)
+.output comment
+comment(EA, Comment) :-
+    debug_ea_no_subtype(EA, _, _),
+    Comment=cat("NO CONSTRAINTS").
+
+comment(EA, Comment) :-
+    subtype_def_use(Func, EA_def, Reg, EA),
+    Comment=cat("subtype_def_use(Func=", Func, ", EA_def=", to_string(EA_def), ", Reg=", Reg, ", EA_used=", to_string(EA), ")").
+
+comment(EA, Comment) :-
+    subtype_reg(Func, EA, Reg_src, Reg_dest),
+    Comment=cat("subtype_reg(Func=", Func, ", EA=", to_string(EA), ", Reg_src=", Reg_src, ", Reg_dest=", Reg_dest, ")").
+
+comment(EA, Comment) :-
+    subtype_reg_typesink(Func, EA, Reg, Sink),
+    Comment=cat("subtype_reg_typesink(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Sink=", Sink, ")").
+
+comment(EA, Comment) :-
+    subtype_mem(Mode, Func, EA, Reg, Base, Offset, NBytes),
+    Comment=cat("subtype_mem(Mode=", Mode, ", Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ")").
+
+comment(EA, Comment) :-
+    subtype_reg_read(Func, EA, Reg, Index),
+    Comment=cat("subtype_reg_read(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Index=", to_string(Index), ")").
+
+comment(EA, Comment) :-
+    subtype_reg_write(Func, EA, Reg, Callee, Index),
+    Comment=cat("subtype_reg_write(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Callee=", Callee, ", Index=", to_string(Index)).
+
+comment(EA, Comment) :-
+    subtype_param_pass(Func, Callee, Index),
+    function_symbol(EA, Func),
+    Comment=cat("subtype_param_pass(Func=", Func, ", Callee=", Callee, ", Index=", to_string(Index), ")").
+
+comment(EA, Comment) :-
+    writes_return_value(Func, EA),
+    Comment=cat("writes_return_value(Func=", Func, ", EA=", to_string(EA), ")").
+
+comment(EA, Comment) :-
+    reads_return_value(Caller, Callee, EA),
+    Comment=cat("reads_return_value(Caller=", Caller, ", Callee=", Callee, ", EA_use=", to_string(EA)).
+
+comment(EA, Comment) :-
+    subtype_called(Func, EA, Reg),
+    Comment=cat("subtype_called(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ")").
+
+comment(EA, Comment) :-
+    writes_return_value(Func, EA),
+    Comment=cat("writes_return_value(Func=", Func, ", EA=", to_string(EA), ")").
+
+comment(EA, Comment) :-
+    reads_return_value(Func, Callee, EA),
+    Comment=cat("reads_return_value(Func=", Func, ", Callee=", Callee, ", EA=", to_string(EA)).
+
+comment(EA, Comment) :-
+    stack_pointer_tracking(EA, Reg, Depth),
+    Comment=cat(Reg, " = Stack@", to_string(Depth)).
+
+comment(EA, Comment) :-
+    arch.reg_arithmetic_operation(EA, Dst, Src, Mult, Offset),
+    Comment=cat(Dst, " = ", Src, "*", to_string(Mult), " + ", to_string(Offset)).
+
+// comment(EA, Comment) :-
+//     value_reg(EA,Reg1,EA2,Reg2,Mult,Immediate,_),
+//     Comment=cat("value: ", to_string(EA), "_", Reg1, " = ", to_string(EA2), "_", Reg2, "*", to_string(Mult), " + ", to_string(Immediate)).
+
+// comment(EA, Comment) :-
+//     def_used(EA, Reg, _, _),
+//     Comment=cat("def(", Reg, ")").
+
+// comment(EA, Comment) :-
+//     def_used(EA_def, Reg, EA, _),
+//     Comment=cat("use(", Reg, " from ", to_string(EA_def), ")").
+
+// comment(EA, Comment) :-
+//     next_instruction(EA, EA_next),
+//     Comment=cat("next_instruction(EA=", to_string(EA), ", EA_next=", to_string(EA_next), ")").
+
+// comment(EA, Comment) :-
+//     reaches_without_write(EA, Reg),
+//     Comment=cat("reaches_without_write(", to_string(EA), ", ", Reg, ")").

@@ -1,0 +1,135 @@
+// Simple Stack Analysis
+//
+// The goal of stack analysis is going to be eventually to recover the majority
+// of stack variables, and stack parameters. This is going to be done in two
+// (maybe soon three?) oveall passes.
+//
+// 1. Stack Pointer Tracking: this is used for recovering which registers, at
+//    which program points, are referring to what part of the stack. This is
+//    useful as in order to infer the location of relative stack accesses we
+//    need to know whether a register is referring to stack or not, and if so
+//    which part of stack. This works by first labeling the implicitly passed
+//    stack registers at depth 0, and then forward-propogating stack information
+//    to each instruction, taking into account stack pointer movements or
+//    manipulations
+// 2. Stack Aliasing Analysis: once we know
+
+// An edge in the intra-procedural graph of instructions, including the first
+// instruction, which has no previous instruction (and thus serves as the
+// inital point for stack)
+.decl stack_edge(PrevEA:address, EA:address, HasPrev:unsigned)
+stack_edge(PrevEA, EA, HasPrev) :-
+    next_instruction(PrevEA, EA),
+    HasPrev = 1
+    ;
+    function_symbol(EA, _),
+    PrevEA = 0,
+    HasPrev = 0.
+
+.decl stack_pointer_tracking(EA:address, reg:register, depth:number)
+.output stack_pointer_tracking
+
+// Handle a push or pop to the stack
+stack_pointer_tracking(EA, Reg, Depth) :-
+    stack_edge(PrevEA, EA, HasPrev),
+    (
+        push(EA),
+        Mult=-1
+        ;
+        pop(EA),
+        Mult=1
+    ),
+    arch.stack_pointer(Reg),
+    (
+        HasPrev = 1,
+        stack_pointer_tracking(PrevEA, Reg, PrevDepth)
+        ;
+        HasPrev = 0,
+        PrevDepth = 0
+    ),
+    arch.pointer_size(Size),
+    Depth = PrevDepth + (Mult * as(Size, number)).
+
+// Handle computing a new stack pointer
+stack_pointer_tracking(EA, Reg, Depth) :-
+    stack_edge(PrevEA, EA, HasPrev),
+    // If we're not pushing and popping...
+    !pop(EA),
+    !push(EA),
+
+    // ... and we compute Reg from SrcReg...
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg),
+    (
+        arch.reg_arithmetic_operation(EA, Reg, SrcReg, 1, Delta)
+        ;
+        instruction_get_operation(EA, Op),
+        arch.move_operation(Op),
+        Delta=0
+    ),
+
+    (
+        // ... and SrcReg is a stack reg from previous instruction ...
+        HasPrev=1,
+        instruction_get_src_op(EA, _, SrcOp),
+        op_regdirect_contains_reg(SrcOp, SrcReg),
+        stack_pointer_tracking(PrevEA, SrcReg, PrevDepth)
+        ;
+        // ... and SrcReg is the implicitly passed stack pointer ...
+        HasPrev=0,
+        (arch.stack_pointer(SrcReg) ; arch.frame_pointer(SrcReg)),
+        PrevDepth=0
+    ),
+
+    // ... update stack depth
+    Depth=PrevDepth+Delta.
+
+// Handle normal propogations
+stack_pointer_tracking(EA, Reg, Depth) :-
+    stack_edge(PrevEA, EA, HasPrev),
+    (
+        // Let stack pointers in PUSH/POP be handled by their handler
+        (pop(EA) ; push(EA)),
+        !arch.stack_pointer(Reg)
+        ;
+        // If we're not pushing and popping...
+        !pop(EA),
+        !push(EA)
+    ),
+    (
+        // ... and if we don't write at all ...
+        !instruction_get_dest_op(EA, _, _)
+        ;
+        // ... and if we do write...
+        instruction_get_dest_op(EA, _, DestOp),
+        (
+            // ... to something thats not frame/stack ...
+            HasPrev = 1,
+            stack_pointer_tracking(PrevEA, Reg, Depth),
+            !op_regdirect_contains_reg(DestOp, Reg)
+            ;
+            // ... to something thats not the default initialized stack ...
+            HasPrev = 0,
+            (
+                arch.frame_pointer(Reg)
+                ;
+                arch.stack_pointer(Reg)
+            ),
+            !op_regdirect_contains_reg(DestOp, Reg)
+        )
+    ),
+    (
+        // ... do normal propogation
+        HasPrev = 1,
+        stack_pointer_tracking(PrevEA, Reg, Depth)
+        ;
+        // ... initialize the frame/stack pointer to Depth = 0
+        HasPrev = 0,
+        (
+            arch.frame_pointer(Reg)
+            ;
+            arch.stack_pointer(Reg)
+        ),
+        reaches_without_write(EA, Reg),
+        Depth = 0
+    ).

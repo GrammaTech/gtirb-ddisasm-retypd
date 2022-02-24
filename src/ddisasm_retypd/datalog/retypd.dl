@@ -1,0 +1,138 @@
+#include "types.dl"
+#include "external.dl"
+
+#include "arch.dl"
+#include "callingconv.dl"
+#include "callgraph.dl"
+#include "signature.dl"
+#include "stack_tracker.dl"
+#include "subtypes.dl"
+#include "debug.dl"
+
+// Filter the name to prevent retypd constraints containing invalid chars
+.decl filter_name(filtered:symbol, unfiltered:symbol)
+filter_name(Filt, Unfilt) :-
+    function_symbol(Func_addr, Unfilt),
+    (
+        (contains(".", Unfilt); contains("@", Unfilt)),
+        Filt=cat("FUN_", to_string(Func_addr))
+        ;
+        Func_addr=Func_addr, // Suppress warning in souffle
+        !(contains(".", Unfilt); contains("@", Unfilt)),
+        Filt=Unfilt
+    ),
+    Filt!="FUN_0".
+
+//////////////////////////////////////////////////////////////////////////////
+// subtype constraint generation from subtype relationships generated in
+// subtypes.dl. These are parsable by the retypd constraint aprser.
+.decl subtype_constraint(func:symbol, constraint:symbol, reason: symbol)
+.output subtype_constraint
+
+// Register-to-register constraints
+subtype_constraint(Func, Constraint, "register-to-register") :-
+    subtype_reg(UFunc, EA, Reg_src, Reg_dest),
+    filter_name(Func, UFunc),
+
+    Src=cat(Reg_src, "_", to_string(EA)),
+    Dest=cat(Reg_dest, "_", to_string(EA)),
+    Constraint=cat(Src," <= ", Dest).
+
+// Register-to-register constraints
+subtype_constraint(Func, Constraint, "def-to-use") :-
+    subtype_def_use(UFunc, EA_src, Reg, EA_dest),
+    filter_name(Func, UFunc),
+
+    Src=cat(Reg, "_", to_string(EA_src)),
+    Dest=cat(Reg, "_", to_string(EA_dest)),
+    Constraint=cat(Src," <= ", Dest).
+
+// Register-to-memory (and vice-versa) constraints
+subtype_constraint(Func, Constraint, "register-to-memory") :-
+    subtype_mem(Mode, UFunc, EA, Reg, Base, Offset, NBytes),
+    filter_name(Func, UFunc),
+    (
+        Reg!="CONSTANT",
+        RegSym=cat(Reg, "_", to_string(EA))
+        ;
+        Reg="CONSTANT",
+        RegSym="int"
+    ),
+    MemAccessPath=cat(Mode, ".σ", to_string(NBytes), "@", to_string(Offset)),
+    MemSym=cat(Base, "_", to_string(EA), ".", MemAccessPath),
+    (
+        Mode="load",
+        Src=MemSym,
+        Dest=RegSym
+        ;
+        Mode="store",
+        Src=RegSym,
+        Dest=MemSym
+    ),
+    Constraint=cat(Src, " <= ", Dest).
+
+// Register-to-register parameter constraints
+// TODO: Stack-passed arguments
+subtype_constraint(Func, Constraint, "register-to-register param read") :-
+    subtype_reg_read(UFunc, EA_use, Reg, Index),
+    filter_name(Func, UFunc),
+    Src=cat(Func, ".in_", to_string(Index - 1)),
+    Dest=cat(Reg, "_", to_string(EA_use)),
+    Constraint=cat(Src, " <= ", Dest).
+
+subtype_constraint(Func, Constraint, "register-to-register param write") :-
+    subtype_reg_write(UFunc, EA_def, Reg, UCallee, Index),
+    filter_name(Func, UFunc),
+    filter_name(Callee, UCallee),
+    Src=cat(Reg, "_", to_string(EA_def)),
+    Dest=cat(Callee, ".in_", to_string(Index - 1)),
+    Constraint=cat(Src, " <= ", Dest).
+
+subtype_constraint(Func, Constraint, "register-to-register param implicit") :-
+    subtype_param_pass(UFunc, UCallee, Index),
+    filter_name(Func, UFunc),
+    filter_name(Callee, UCallee),
+    FuncPart=cat(".in_", to_string(Index - 1)),
+    Src=cat(Func, FuncPart),
+    Dest=cat(Callee, FuncPart),
+    Constraint=cat(Src, " <= ", Dest).
+
+subtype_constraint(Func,  Constraint, "register-to-return write") :-
+    writes_return_value(UFunc, EA_def),
+    filter_name(Func, UFunc),
+    return_register(_, Reg),
+    Src=cat(Reg, "_", to_string(EA_def)),
+    Dest=cat(Func, ".out"),
+    Constraint=cat(Src, " <= ", Dest).
+
+
+// Register-to-register return constraints
+subtype_constraint(Func, Constraint, "return-to-register read") :-
+    reads_return_value(UCaller, UCallee, EA_use),
+    filter_name(Caller, UCaller),
+    filter_name(Callee, UCallee),
+    return_register(_, Reg),
+    Src=cat(Callee, ".out"),
+    Dest=cat(Reg, "_", to_string(EA_use)),
+    Func=Caller,
+    Constraint=cat(Src, " <= ", Dest).
+
+// Register-to-type sink constraint
+subtype_constraint(Func, Constraint, "register-to-sink") :-
+    subtype_reg_typesink(UFunc, EA, Reg, Sink),
+    filter_name(Func, UFunc),
+    Dest=cat(Reg, "_", to_string(EA)),
+    Constraint=cat(Sink, " <= ", Dest).
+
+// Functions which have no return values have their outputs subtyped to void to
+// improve their type output from the retypd solver
+subtype_constraint(Func, Constraint, "func-to-void") :-
+    subtype_no_return_val(UFunc),
+    filter_name(Func, UFunc),
+    Constraint=cat("void <= ", Func, ".out").
+
+subtype_constraint(Func, Constraint, "register-called") :-
+    subtype_called(UFunc, EA, Reg),
+    filter_name(Func, UFunc),
+    Dest=cat(Reg, "_", to_string(EA)),
+    Constraint=cat("func <= ", Dest).

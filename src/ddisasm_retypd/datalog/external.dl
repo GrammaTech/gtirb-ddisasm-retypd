@@ -1,0 +1,224 @@
+//////////////////////////////////////////////////////////////////////////////
+// Relations imported from ddisasm's exported facts
+
+.decl binary_format(Format:symbol)
+.input binary_format
+
+.decl binary_isa(isa:symbol)
+.input binary_isa
+
+.decl op_indirect(code:operand_code, reg1:register, reg2:register, reg3:register,
+        multiplier:number, offset:number, size_value:unsigned)
+.input op_indirect
+
+.decl instruction_get_operation(ea:address, operation:symbol)
+.input  instruction_get_operation
+
+.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
+.input instruction_get_op
+
+.decl instruction_get_src_op(ea:address, Index:operand_index, op:operand_code)
+.input instruction_get_src_op
+
+.decl instruction_get_dest_op(ea:address, index:number, op:operand_code)
+.input instruction_get_dest_op
+
+
+.decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
+          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+          immOffset:unsigned,displacementOffset:unsigned)
+.input instruction
+
+.decl op_regdirect_contains_reg(op:operand_code, reg:register)
+.input op_regdirect_contains_reg
+
+.decl op_register_bitfield(code:operand_code, register_name:register)
+.input op_register_bitfield
+
+.decl op_immediate(code:operand_code, offset:number)
+.input op_immediate
+
+.decl op_regdirect(code:operand_code,register_name:register)
+.input op_regdirect
+
+.decl code_in_block(ea:address, block:address)
+.input code_in_block
+
+.decl function_symbol(ea:address, name:symbol)
+.input function_symbol
+
+.decl def_used(ea_def:address, reg:register, ea_used:address, index_used:operand_index)
+.input def_used
+
+.decl used(EA:address, Reg:register, Index:operand_index)
+.input used
+
+.decl cfg_edge(src:address, dest:address, conditional:symbol, indirect:symbol, type:symbol)
+.input cfg_edge
+
+.decl reg_call(src:address, reg:register)
+.input reg_call
+
+.decl data_access(EA:address, Op_index:operand_index, RegSegment:register, RegBase:register, RegIndex:register, Mult:number, Offset:number, Size:unsigned)
+.input data_access
+
+.decl reg_stored_in_stack(EA:address, Reg:register, StackPos:number, StackFrameDefinedAt: address)
+.input reg_stored_in_stack
+
+.decl reg_loaded_from_stack(EA:address, Reg:register, Base:register, StackPos:number, StackFrameDefinedAt: address)
+.input reg_loaded_from_stack
+
+.decl local_next(ea:address, ea_next:address)
+.input local_next
+
+.decl block_next(ea:address, block:address)
+.input block_next
+
+.comp abs_arch {
+    .decl pointer_size(N: unsigned)
+    .input pointer_size
+
+    .decl mov(EA:address)
+    .input mov
+
+    .decl read_only_operation(Operation:symbol)
+    .input read_only_operation
+
+    .decl pc_register(reg:register)
+    .input pc_register
+
+    .decl frame_pointer(reg:register)
+    .input frame_pointer
+
+    .decl stack_pointer(reg:register)
+    .input stack_pointer
+
+    .decl arithmetic_operation(Operation:symbol)
+    .input arithmetic_operation
+
+    .decl logic_operation(Operation:symbol)
+    .input logic_operation
+
+    .decl call_operation(operation:symbol)
+    .input call_operation
+
+    .decl cmp_operation(Operation:symbol)
+    .input cmp_operation
+
+    .decl conditional_operation(Operation:symbol)
+    .input conditional_operation
+
+    .decl conditional(EA:address)
+    .input conditional
+
+    .decl jump(EA:address)
+    .input jump
+
+    .decl return(src:address)
+    .input return
+
+    .decl delay_slot(BranchEA:address,EA:address)
+    .input delay_slot
+
+    .decl function_non_maintained_reg(reg:register)
+    .input function_non_maintained_reg
+
+    .decl track_register(reg1:register,reg2:register)
+    .input track_register
+
+    .decl jump_equal_operation(n:symbol)
+    .input jump_equal_operation
+
+    .decl jump_unequal_operation(n:symbol)
+    .input jump_unequal_operation
+
+    .decl conditional_mov(EA:address)
+    .input conditional_mov
+
+    .decl move_operation(Operation:symbol)
+    .input move_operation
+
+    .decl reg_arithmetic_operation(EA:address,Dst:register,Src:register,Mult:number,Offset:number)
+    .input reg_arithmetic_operation
+}
+
+.init arch = abs_arch
+
+.comp abs_function_inference {
+    .decl in_function(Block:address, Function:address)
+    .input in_function
+}
+
+.init function_inference = abs_function_inference
+
+.decl symbolic_operand(ea:address, index:operand_index, value:address, type:symbol)
+.input symbolic_operand
+
+.decl unconditional_jump(n:address)
+.input unconditional_jump
+
+.decl conditional_jump(src:address)
+.input conditional_jump
+
+
+.decl may_fallthrough(o:address,d:address)
+.input may_fallthrough
+
+.decl direct_jump(src:address, dest:address)
+.input direct_jump
+
+.decl direct_call(EA:address,Dest:address)
+.input direct_call
+
+.decl code(EA:address)
+.input code
+
+.decl block_last_instruction(Block:address,EA:address)
+.input block_last_instruction
+
+.decl block(Block:address)
+.input block
+
+.decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Operation:symbol)
+.input jump_table_start
+
+.decl relative_address(EA:address,Size:unsigned,TableStart:address,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
+.input relative_address
+
+.decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
+.input lsda_callsite_addresses
+
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)
+.input cmp_immediate_to_reg
+
+.decl next(n:address,m:address)
+.input next
+
+.decl is_xor_reset(EA:address)
+.input is_xor_reset
+
+.decl fde_addresses(start:address, end:address)
+.input fde_addresses
+
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:operand_index,Immediate:number)
+.input op_immediate_and_reg
+
+.decl op_indirect_contains_reg(op:operand_code,reg:register)
+.input op_indirect_contains_reg
+
+.decl reg_jump(src:address,Reg:symbol)
+.input reg_jump
+
+.decl data_byte(ea:address,value:unsigned)
+.input data_byte
+
+
+.decl pc_relative_operand(src:address,index:operand_index, dest:address)
+.input pc_relative_operand
+
+.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
+.input got_relative_operand
+
+.decl value_reg(EA:address,Reg:register,
+                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
+.input value_reg
