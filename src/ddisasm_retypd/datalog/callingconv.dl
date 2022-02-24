@@ -25,4 +25,3 @@ param_stack("System V AMD64 ABI", 7, "RTL") :-
 .decl return_register(convention: symbol, reg: register)
 return_register("System V AMD64 ABI", "RAX") :-
     binary_isa("X64").
-

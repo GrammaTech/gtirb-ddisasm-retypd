@@ -10,7 +10,7 @@ import pytest
 
 
 def pytest_generate_tests(metafunc):
-    """ Find and load (IR, Header) pairs from the test directory 
+    """ Find and load (IR, Header) pairs from the test directory
     :parma metafunc: Test function being analyzed
     """
     if "ir" in metafunc.fixturenames and "header" in metafunc.fixturenames:
@@ -49,15 +49,15 @@ def test_correct_num_args(ir, header, tmp_path):
     for (item, header_type) in header.namespace.items():
         if not isinstance(header_type, FunctionType):
             continue
-        
+
         inferred_type = type_outs[item]
 
         cnt_inferred = len(inferred_type.params)
         cnt_header = len(header_type.params)
 
-        assert cnt_inferred == cnt_header, (
-            f"Failed to get correct parameters for {item}"
-        )
+        assert (
+            cnt_inferred == cnt_header
+        ), f"Failed to get correct parameters for {item}"
 
 
 def test_types_correctly(ir, header, tmp_path):
