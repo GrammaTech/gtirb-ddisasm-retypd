@@ -19,7 +19,9 @@ check-format:
   stage: check-format
   before_script: []
   script:
-    - apt install git
+    - apt update
+    - apt install -y --no-install-recommends git
+    - apt purge -y --auto-remove
     - python3 -m pip install pre-commit
     - pre-commit run --all-files --show-diff-on-failure
     # helper message for new committers
