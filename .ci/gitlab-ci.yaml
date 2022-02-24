@@ -46,7 +46,7 @@ check-format:
       EOF
 
 test:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/prebuilt
   stage: test
   script:
     - apt update
