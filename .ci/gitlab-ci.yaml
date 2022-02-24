@@ -48,7 +48,8 @@ check-format:
 test:
   stage: test
   script:
-    - ./tests/build_
+    - apt install -y gcc-9
+    - ./tests/build_tests.sh
     - python3 -m pip install .[test]
     - pytest --cov=gtirb_ddisasm_retypd --cov-report=term --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
   artifacts:

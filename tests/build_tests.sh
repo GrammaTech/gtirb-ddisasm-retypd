@@ -3,9 +3,9 @@ set -euo pipefail
 
 DDISASM_BIN="${DDISASM:-ddisasm}"
 
-SRCDIR=$(pwd)/src/
-BINDIR=$(pwd)/binaries/
-GTIRBDIR=$(pwd)/gtirb/
+SRCDIR=$(pwd)/tests/src/
+BINDIR=$(pwd)/tests/binaries/
+GTIRBDIR=$(pwd)/tests/gtirb/
 
 SOURCES=$(find $SRCDIR -name "*.c")
 
