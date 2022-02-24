@@ -46,8 +46,10 @@ check-format:
       EOF
 
 test:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   stage: test
   script:
+    - apt update
     - apt install -y gcc
     - ./tests/build_tests.sh
     - python3 -m pip install .[test]
