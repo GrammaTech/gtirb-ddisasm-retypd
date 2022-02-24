@@ -12,8 +12,6 @@ stages:
 default:
   image: python:3.7-slim
   tags: ['kubernetes']
-  before_script:
-    - pip install --pre --extra-index-url=$EXTRA_INDEX_URL .
 
 check-format:
   stage: check-format
@@ -52,7 +50,7 @@ test:
     - apt update
     - apt install -y gcc python3.7 python3-pip
     - ./tests/build_tests.sh
-    - python3 -m pip install .[test]
+    - python3 -m pip install --pre --extra-index-url=$EXTRA_INDEX_URL .[test]
     - pytest --cov=gtirb_ddisasm_retypd --cov-report=term --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
   artifacts:
     when: always
