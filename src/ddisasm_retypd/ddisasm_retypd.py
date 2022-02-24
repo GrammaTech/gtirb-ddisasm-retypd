@@ -162,6 +162,10 @@ class DdisasmRetypd:
 
 
 def print_user_types(types: Dict[DerivedTypeVariable, CType]):
+    """ Recursively detect types that would be considered a 'user type', i.e.
+        a function prototype or any compound type
+    :param types: Types output by the retypd algorithm
+    """
     working_types = set(types.values())
     user_defs = set()
 
