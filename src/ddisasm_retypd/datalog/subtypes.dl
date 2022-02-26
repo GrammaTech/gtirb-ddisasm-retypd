@@ -64,33 +64,35 @@ subtype_reg_typesink(Func, EA, Reg, Sink) :-
 //     EA_base_def:   mov Reg, ***
 //     ...
 //     EA:            mov nbyte [Base+Offset], Reg
-.decl subtype_mem(mode:symbol, func:symbol, ea:address, reg:register, base:register, offset:number, nbytes:number)
-.output subtype_mem
-subtype_mem(Mode, Func, EA, Reg, Base, Offset, as(NBytes, number)):-
+.decl subtype_mem_reg(mode:symbol, func:symbol, ea:address, reg:register, base:register, offset:number, nbytes:number)
+.output subtype_mem_reg
+subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
     arch.mov(EA),
+    memory_access(Mode, EA, Base, Offset, NBytes),
     (
-        instruction_get_src_op(EA, _, IndOp),
-        instruction_get_dest_op(EA, _, RegOp),
-        Mode = "load"
+        Mode = "load",
+        instruction_get_dest_op(EA, _, RegOp)
         ;
-        instruction_get_src_op(EA, _, RegOp),
-        instruction_get_dest_op(EA, _, IndOp),
-        Mode = "store"
+        Mode = "store",
+        instruction_get_src_op(EA, _, RegOp)
     ),
-    op_indirect(IndOp, "NONE", Base, "NONE", 1, RawOffset, NBits),
-    NBytes = NBits/8,
+    op_regdirect_contains_reg(RegOp, Reg),
+
+    code_in_block(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Memory access to type sink relations
+.decl subtype_mem_sink(mode:symbol, func:symbol, ea:address, base:register, offset:number, nbytes:number, sink:lattice_type)
+.output subtype_mem_sink
+subtype_mem_sink(Mode, Func, EA, Base, Offset, NBytes, Sink) :-
+    memory_access(Mode, EA, Base, Offset, NBytes),
     (
-        stack_pointer_tracking(EA, Base, _),
-        Offset=RawOffset+1000 // Negative numbers aren't supported
+        Mode="load",
+        typesink(EA, "SRC", Sink)
         ;
-        !stack_pointer_tracking(EA, Base, _),
-        Offset=RawOffset
-    ),
-    (
-        op_regdirect_contains_reg(RegOp, Reg)
-        ;
-        op_immediate(RegOp, _),
-        Reg="CONSTANT"
+        Mode="store",
+        typesink(EA, "DEST", Sink)
     ),
     code_in_block(EA, Block),
     function_inference.in_function(Block, Func_addr),

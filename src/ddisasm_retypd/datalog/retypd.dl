@@ -53,15 +53,9 @@ subtype_constraint(Func, Constraint, "def-to-use") :-
 
 // Register-to-memory (and vice-versa) constraints
 subtype_constraint(Func, Constraint, "register-to-memory") :-
-    subtype_mem(Mode, UFunc, EA, Reg, Base, Offset, NBytes),
+    subtype_mem_reg(Mode, UFunc, EA, Reg, Base, Offset, NBytes),
     filter_name(Func, UFunc),
-    (
-        Reg!="CONSTANT",
-        RegSym=cat(Reg, "_", to_string(EA))
-        ;
-        Reg="CONSTANT",
-        RegSym="int"
-    ),
+    RegSym=cat(Reg, "_", to_string(EA)),
     MemAccessPath=cat(Mode, ".σ", to_string(NBytes), "@", to_string(Offset)),
     MemSym=cat(Base, "_", to_string(EA), ".", MemAccessPath),
     (
@@ -74,6 +68,24 @@ subtype_constraint(Func, Constraint, "register-to-memory") :-
         Dest=MemSym
     ),
     Constraint=cat(Src, " <= ", Dest).
+
+// Memory-to-sink (and vice-versa) constraints
+subtype_constraint(Func, Constraint, "memory-to-sink") :-
+    subtype_mem_sink(Mode, UFunc, EA, Base, Offset, NBytes, Sink),
+    filter_name(Func, UFunc),
+    MemAccessPath=cat(Mode, ".σ", to_string(NBytes), "@", to_string(Offset)),
+    MemSym=cat(Base, "_", to_string(EA), ".", MemAccessPath),
+    (
+        Mode="load",
+        Src=MemSym,
+        Dest=Sink
+        ;
+        Mode="store",
+        Src=Sink,
+        Dest=MemSym
+    ),
+    Constraint=cat(Src, " <= ", Dest).
+
 
 // Register-to-register parameter constraints
 // TODO: Stack-passed arguments

@@ -10,7 +10,7 @@ debug_ea_no_subtype(EA, Func, Opcode) :-
     !subtype_def_use(_, EA, _, _),
     !subtype_def_use(_, _, _, EA),
     !subtype_reg_typesink(_, EA, _, _),
-    !subtype_mem(_, _, EA, _, _, _, _),
+    !subtype_mem_reg(_, _, EA, _, _, _, _),
     !subtype_param_reg_read(_, EA, _, _),
     !subtype_param_reg_write(_, EA, _, _, _),
     !subtype_called(_, EA, _).
@@ -34,8 +34,13 @@ comment(EA, Comment) :-
     Comment=cat("subtype_reg_typesink(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Sink=", Sink, ")").
 
 comment(EA, Comment) :-
-    subtype_mem(Mode, Func, EA, Reg, Base, Offset, NBytes),
-    Comment=cat("subtype_mem(Mode=", Mode, ", Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ")").
+    subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes),
+    Comment=cat("subtype_mem_reg(Mode=", Mode, ", Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ")").
+
+comment(EA, Comment) :-
+    subtype_mem_sink(Mode, Func, EA, Base, Offset, NBytes, Sink),
+    Comment=cat("subtype_mem_sink(Mode=", Mode, ", Func=", Func, ", EA=", to_string(EA), ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ", Sink=", Sink, ")").
+
 
 comment(EA, Comment) :-
     subtype_param_reg_read(Func, EA, Reg, Index),

@@ -101,3 +101,25 @@ typesink(EA, "SRC", Sink) :-
         Sink="uint"
     ),
     compare_and_conditional(EA, EA_cond).
+
+// Memory access on a given [base+offset], whether it is a load or a store is
+// determined by Mode.
+.decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:number)
+
+memory_access(Mode, EA, Base, Offset, as(NBytes, number)) :-
+    (
+        instruction_get_src_op(EA, _, IndOp),
+        Mode = "load"
+        ;
+        instruction_get_dest_op(EA, _, IndOp),
+        Mode = "store"
+    ),
+    op_indirect(IndOp, "NONE", Base, "NONE", 1, RawOffset, NBits),
+    NBytes = NBits/8,
+    (
+        stack_pointer_tracking(EA, Base, _),
+        Offset=RawOffset+1000 // Negative numbers aren't supported
+        ;
+        !stack_pointer_tracking(EA, Base, _),
+        Offset=RawOffset
+    ).
