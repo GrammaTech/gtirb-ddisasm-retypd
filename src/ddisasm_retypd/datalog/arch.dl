@@ -90,3 +90,7 @@ push(EA) :-
 .decl pop(EA:address)
 pop(EA) :-
     instruction_get_operation(EA, "POP").
+
+.decl typesink_operation(Operation:symbol, Sink:lattice_type)
+typesink_operation(Operation, "int") :- arch.arithmetic_operation(Operation).
+typesink_operation(Operation, "uint") :- arch.logic_operation(Operation).

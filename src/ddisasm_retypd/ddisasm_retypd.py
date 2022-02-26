@@ -85,11 +85,12 @@ class DdisasmRetypd:
 
         comments = defaultdict(set)
 
-        for (addr, comment) in self._souffle_out["comment"]:
-            offset = self.addr_to_offset(int(addr))
+        if "comment" in self._souffle_out:
+            for (addr, comment) in self._souffle_out["comment"]:
+                offset = self.addr_to_offset(int(addr))
 
-            if offset:
-                comments[offset].add(comment)
+                if offset:
+                    comments[offset].add(comment)
 
         constraint_map = defaultdict(ConstraintSet)
 
@@ -191,10 +192,13 @@ def print_user_types(types: Dict[DerivedTypeVariable, CType]):
                 working_types.add(field.ctype)
 
     for type_ in user_defs:
-        print(type_.declare(type_.name))
+        print(type_.pretty_print(type_.name))
 
     for type in types.values():
-        print(type.declare(""))
+        if hasattr(type, "name"):
+            print(type.pretty_print(type.name))
+        else:
+            print(type.pretty_print(""))
 
 
 def main():

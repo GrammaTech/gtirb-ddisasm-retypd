@@ -4,10 +4,14 @@
 #include "arch.dl"
 #include "callingconv.dl"
 #include "callgraph.dl"
+#include "dataflow.dl"
 #include "signature.dl"
 #include "stack_tracker.dl"
 #include "subtypes.dl"
+
+#ifdef DEBUG
 #include "debug.dl"
+#endif
 
 // Filter the name to prevent retypd constraints containing invalid chars
 .decl filter_name(filtered:symbol, unfiltered:symbol)
@@ -74,14 +78,14 @@ subtype_constraint(Func, Constraint, "register-to-memory") :-
 // Register-to-register parameter constraints
 // TODO: Stack-passed arguments
 subtype_constraint(Func, Constraint, "register-to-register param read") :-
-    subtype_reg_read(UFunc, EA_use, Reg, Index),
+    subtype_param_reg_read(UFunc, EA_use, Reg, Index),
     filter_name(Func, UFunc),
     Src=cat(Func, ".in_", to_string(Index - 1)),
     Dest=cat(Reg, "_", to_string(EA_use)),
     Constraint=cat(Src, " <= ", Dest).
 
 subtype_constraint(Func, Constraint, "register-to-register param write") :-
-    subtype_reg_write(UFunc, EA_def, Reg, UCallee, Index),
+    subtype_param_reg_write(UFunc, EA_def, Reg, UCallee, Index),
     filter_name(Func, UFunc),
     filter_name(Callee, UCallee),
     Src=cat(Reg, "_", to_string(EA_def)),

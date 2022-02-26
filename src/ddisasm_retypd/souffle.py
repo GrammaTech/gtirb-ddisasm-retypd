@@ -1,3 +1,4 @@
+import logging
 import shutil
 import subprocess
 import tempfile
@@ -48,6 +49,7 @@ def execute_souffle(
                 f"{souffle.resolve()}",
                 f"--fact-dir={facts.resolve()}",
                 f"--output-dir={tmpdir_path}",
+                "--macro='DEBUG=1'",
             ]
             + compile
             + [f"{datalog.resolve()}"]
@@ -57,7 +59,8 @@ def execute_souffle(
             path = tmpdir_path / f"{output_rel}.csv"
 
             if not path.exists():
-                raise FileNotFoundError(f"No data for {output_rel}")
+                logging.error(f"No data for {output_rel}")
+                continue
 
             lines = path.read_text().splitlines()
             output[output_rel] = [tuple(line.split("\t")) for line in lines]

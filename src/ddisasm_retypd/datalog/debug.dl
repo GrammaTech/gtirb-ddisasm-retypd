@@ -11,8 +11,8 @@ debug_ea_no_subtype(EA, Func, Opcode) :-
     !subtype_def_use(_, _, _, EA),
     !subtype_reg_typesink(_, EA, _, _),
     !subtype_mem(_, _, EA, _, _, _, _),
-    !subtype_reg_read(_, EA, _, _),
-    !subtype_reg_write(_, EA, _, _, _),
+    !subtype_param_reg_read(_, EA, _, _),
+    !subtype_param_reg_write(_, EA, _, _, _),
     !subtype_called(_, EA, _).
 
 .decl comment(EA:address, comment:symbol)
@@ -38,12 +38,12 @@ comment(EA, Comment) :-
     Comment=cat("subtype_mem(Mode=", Mode, ", Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ")").
 
 comment(EA, Comment) :-
-    subtype_reg_read(Func, EA, Reg, Index),
-    Comment=cat("subtype_reg_read(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Index=", to_string(Index), ")").
+    subtype_param_reg_read(Func, EA, Reg, Index),
+    Comment=cat("subtype_param_reg_read(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Index=", to_string(Index), ")").
 
 comment(EA, Comment) :-
-    subtype_reg_write(Func, EA, Reg, Callee, Index),
-    Comment=cat("subtype_reg_write(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Callee=", Callee, ", Index=", to_string(Index)).
+    subtype_param_reg_write(Func, EA, Reg, Callee, Index),
+    Comment=cat("subtype_param_reg_write(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Callee=", Callee, ", Index=", to_string(Index)).
 
 comment(EA, Comment) :-
     subtype_param_pass(Func, Callee, Index),

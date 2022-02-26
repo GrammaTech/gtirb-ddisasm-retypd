@@ -1,0 +1,103 @@
+// Utility relation to determine whether or not an instructions destination is
+// eventually dereferenced
+.decl register_derefenced(ea:address)
+register_derefenced(EA) :-
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect_contains_reg(DestOp, Reg),
+    def_used(EA, Reg, EA_used, _),
+    (
+        data_access(EA_used, _, _, Reg, _, _, _, _)
+        ;
+        !data_access(EA_used, _, _, Reg, _, _, _, _),
+        instruction_get_src_op(EA_used, _, UsedSrcOp),
+        op_regdirect_contains_reg(UsedSrcOp, Reg),
+        register_derefenced(EA_used)
+    ).
+
+
+// Determine if to addresses reach eachother locally without reaching another
+// compare operator.
+.decl local_reaches_without_compare(EA_from:address, EA_to:address)
+local_reaches_without_compare(EA_from, EA_to) :-
+    local_next(EA_from, EA_to)
+    ;
+    local_next(EA_from, EA_mid),
+    instruction_get_operation(EA_mid, Op),
+    !arch.cmp_operation(Op),
+    local_reaches_without_compare(EA_mid, EA_to).
+
+// Determine pairs of instructions that compare two numbers and then jump or a
+// conditional move based on the set flags.
+.decl compare_and_conditional(EA_cmp:address, EA_cond:address)
+.output compare_and_conditional
+compare_and_conditional(EA_cmp, EA_cond) :-
+    arch.cmp_operation(CmpOperation),
+    instruction_get_operation(EA_cmp, CmpOperation),
+    local_reaches_without_compare(EA_cmp, EA_cond),
+    (
+        arch.jump(EA_cond)
+        ;
+        arch.conditional(EA_cond)
+    ).
+
+.decl typesink(EA:address, side:symbol, sink:lattice_type)
+
+// Set a type sink for a register written to with an instruction that has a
+// type-revealing opcode. This currently uses the per-architecture opcode
+// tables from ddisasm though this could be significantly improved.
+typesink(EA, "DEST", Sink) :-
+    instruction_get_operation(EA, Op),
+    typesink_operation(Op, Sink),
+    !register_derefenced(EA).
+
+// Set a type sink for a register that reads from an integer. Its probably
+// safer to set the to be a uint in the type lattice?
+typesink(EA, "DEST", "int") :-
+    instruction_get_operation(EA, Operation),
+    !arch.read_only_operation(Operation),
+
+    // Src
+    instruction_get_operation(EA, Operation),
+    instruction_get_op(EA, Imm_index, Op),
+    op_immediate(Op, _),
+    !symbolic_operand(EA, Imm_index, _, _),
+
+    // Dest
+    instruction_get_dest_op(EA, _, DestOp),
+    (
+        op_regdirect_contains_reg(DestOp, Reg),
+        !op_register_bitfield(DestOp, Reg),
+        !arch.pc_register(Reg)
+        ;
+        !op_regdirect_contains_reg(DestOp, _)
+    ).
+
+// Set a type sink for sign and zero extension instructions
+typesink(EA, "DEST", "int") :-
+    instruction_get_operation(EA, Operation),
+    sign_extend(Operation).
+
+typesink(EA, "DEST", "uint") :-
+    instruction_get_operation(EA, Operation),
+    zero_extend(Operation).
+
+// Set a type sink for integers that are compared with eachother with respect
+// to signedness, i.e.:
+//     EA: CMP RAX, 4
+//         JGE label
+typesink(EA, "SRC", Sink) :-
+    instruction_get_operation(EA_cond, Op),
+    (
+        sign_jump(Op),
+        Sink="int"
+        ;
+        signed_conditional_move(Op),
+        Sink="int"
+        ;
+        unsigned_jump(Op),
+        Sink="uint"
+        ;
+        unsigned_conditional_move(Op),
+        Sink="uint"
+    ),
+    compare_and_conditional(EA, EA_cond).
