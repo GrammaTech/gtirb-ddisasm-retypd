@@ -34,6 +34,10 @@ comment(EA, Comment) :-
     Comment=cat("subtype_reg_typesink(Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Sink=", Sink, ")").
 
 comment(EA, Comment) :-
+    memory_access(Mode, EA, Base, Offset, NBytes),
+    Comment=cat("memory_access(Mode=", Mode, ", EA=", to_string(EA), ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ")").
+
+comment(EA, Comment) :-
     subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes),
     Comment=cat("subtype_mem_reg(Mode=", Mode, ", Func=", Func, ", EA=", to_string(EA), ", Reg=", Reg, ", Base=", Base, ", Offset=", to_string(Offset), ", NBytes=", to_string(NBytes), ")").
 
