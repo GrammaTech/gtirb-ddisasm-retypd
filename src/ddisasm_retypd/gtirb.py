@@ -1,4 +1,6 @@
+import logging
 from typing import Dict
+from gtirb_functions import Function
 from gtirb_types import (
     GtirbTypes,
     AbstractType,
@@ -94,7 +96,20 @@ class RetypdGtirbWriter:
     def add_types(
         self, derived_types: Dict[DerivedTypeVariable, c_types.CType]
     ):
-        for type_obj in derived_types.values():
-            self._translate_ctype(type_obj)
+        functions = Function.build_functions(self.module)
+        name2func = {function.names[0]: function for function in functions}
+        prototypeTable = {}
+
+        for dtv, type_obj in derived_types.items():
+            type_id = self._translate_ctype(type_obj)
+            func = name2func.get(str(dtv), None)
+
+            if func is not None:
+                prototypeTable[func.uuid] = type_id
+            else:
+                logging.warning(f"Failed to find function for {dtv}")
 
         self.types.save()
+        self.module.aux_data["prototypeTable"] = gtirb.AuxData(
+            prototypeTable, "mapping<UUID,UUID>"
+        )
