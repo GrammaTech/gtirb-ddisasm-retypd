@@ -37,7 +37,7 @@ build-image:
       - main
     changes:
       - .ci/Dockerfile
-      - .ci/gitlab-ci.yml
+      - .ci/gitlab-ci.yaml
 
 check-format:
   stage: check-format
