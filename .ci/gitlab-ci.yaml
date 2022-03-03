@@ -44,11 +44,9 @@ check-format:
       EOF
 
 test:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/prebuilt
+  image: $DOCKER_REGISTRY/rewriting/analyses/gtirb-ddisasm-retypd/
   stage: test
   script:
-    - apt update
-    - apt install -y gcc python3 python3-pip
     - ./tests/build_tests.sh
     - python3 -m pip install --pre --extra-index-url=$EXTRA_INDEX_URL .[test]
     - pytest --cov=gtirb_ddisasm_retypd --cov-report=term --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
