@@ -1,6 +1,7 @@
 FROM ubuntu:20.04 as souffle
-RUN export DEBIAN_FRONTEND=noninteractive
+
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+ENV DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8 LANG=C.UTF-8
 RUN apt-get -y update && apt-get -y install bison build-essential cmake \
     doxygen flex git libffi-dev libtool lsb-release make mcpp pkg-config \
     zlib1g-dev
@@ -19,5 +20,5 @@ COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle
 COPY --from=souffle /usr/local/bin/souffleprof /usr/bin/souffleprof
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
 
-RUN apt update
-RUN apt install -y gcc python3 python3-pip
+ENV DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8 LANG=C.UTF-8
+RUN apt -y update && apt install -y gcc python3 python3-pip
