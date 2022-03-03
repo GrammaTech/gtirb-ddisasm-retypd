@@ -12,7 +12,7 @@ RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
     cd build && \
     make install -j4
 
-FROM docker.grammatech.com/rewriting/ddisasm/ubuntu20
+FROM docker.grammatech.com/rewriting/ddisasm/ubuntu20 AS ubuntu20
 
 COPY --from=souffle /usr/local/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle

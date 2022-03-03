@@ -31,7 +31,7 @@ build-image:
       --dockerfile=$CI_PROJECT_DIR/.ci/Dockerfile
       --destination=$IMAGE_NAME
       --build-arg=GL_PKG_API_TOKEN="$GL_PKG_API_TOKEN"
-      --target=dependencies
+      --target=ubuntu20
   only:
     changes:
       - .ci/*
