@@ -39,9 +39,6 @@ build-image:
       - docker/ci.Dockerfile
       - gitlab-ci.yml
 
-  tags:
-    - *default-runner
-
 check-format:
   stage: check-format
   before_script: []
