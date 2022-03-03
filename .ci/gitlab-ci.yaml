@@ -33,8 +33,6 @@ build-image:
       --build-arg=GL_PKG_API_TOKEN="$GL_PKG_API_TOKEN"
       --target=dependencies
   only:
-    refs:
-      - main
     changes:
       - .ci/*
 
