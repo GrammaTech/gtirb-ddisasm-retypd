@@ -67,7 +67,7 @@ check-format:
       EOF
 
 test:
-  image: $DOCKER_REGISTRY/rewriting/analyses/gtirb-ddisasm-retypd/
+  image: $IMAGE_NAME
   stage: test
   script:
     - ./tests/build_tests.sh
