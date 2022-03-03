@@ -1,17 +1,46 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_STRATEGY: clone
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
 
 stages:
   - check-format
+  - build-image
   - test
-  - build
+  - build-package
   - test_package
   - deploy
 
 default:
   image: python:3.7-slim
   tags: ['kubernetes']
+
+build-image:
+  stage: build-image
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
+  script:
+    # Configure authentication credentials
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    # Run the kaniko executor, which will build our image (using a cache if available) and push it to the CI_REGISTRY.
+    # Downstream jobs will leverage this image for testing and exporting.
+    - >-
+      /kaniko/executor
+      --context=$CI_PROJECT_DIR
+      --dockerfile=$CI_PROJECT_DIR/.ci/Dockerfile
+      --destination=$IMAGE_NAME
+      --build-arg=GL_PKG_API_TOKEN="$GL_PKG_API_TOKEN"
+      --target=dependencies
+  only:
+    refs:
+      - main
+    changes:
+      - docker/ci.Dockerfile
+      - gitlab-ci.yml
+
+  tags:
+    - *default-runner
 
 check-format:
   stage: check-format
@@ -56,8 +85,8 @@ test:
       junit: report.xml
       cobertura: coverage.xml
 
-build:
-  stage: build
+build_package:
+  stage: build-package
   artifacts:
     paths:
       - dist/gtirb_ddisasm_retypd-*-py3-none-any.whl
