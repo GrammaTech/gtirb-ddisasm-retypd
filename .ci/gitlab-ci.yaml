@@ -70,11 +70,11 @@ test:
   image: $IMAGE_NAME
   stage: test
   script:
-    - ./tests/build_tests.sh
     - wget -O - $APT_REPO/conf/apt.gpg.key | apt-key add -
     - echo "deb $APT_REPO $(lsb_release -sc) $APT_COMPONENT" >> /etc/apt/sources.list
     - apt-get update -y
     - apt-get install -y gtirb-pprinter ddisasm
+    - ./tests/build_tests.sh
     - python3 -m pip install --upgrade pip
     - python3 -m pip install --pre --extra-index-url=$EXTRA_INDEX_URL .[test]
     - pytest --cov=gtirb_ddisasm_retypd --cov-report=term --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
