@@ -50,9 +50,6 @@
 .decl def_used(ea_def:address, reg:register, ea_used:address, index_used:operand_index)
 .input def_used
 
-.decl used(EA:address, Reg:register, Index:operand_index)
-.input used
-
 .decl cfg_edge(src:address, dest:address, conditional:symbol, indirect:symbol, type:symbol)
 .input cfg_edge
 
@@ -99,14 +96,8 @@
     .decl logic_operation(Operation:symbol)
     .input logic_operation
 
-    .decl call_operation(operation:symbol)
-    .input call_operation
-
     .decl cmp_operation(Operation:symbol)
     .input cmp_operation
-
-    .decl conditional_operation(Operation:symbol)
-    .input conditional_operation
 
     .decl conditional(EA:address)
     .input conditional
@@ -117,23 +108,8 @@
     .decl return(src:address)
     .input return
 
-    .decl delay_slot(BranchEA:address,EA:address)
-    .input delay_slot
-
-    .decl function_non_maintained_reg(reg:register)
-    .input function_non_maintained_reg
-
     .decl track_register(reg1:register,reg2:register)
     .input track_register
-
-    .decl jump_equal_operation(n:symbol)
-    .input jump_equal_operation
-
-    .decl jump_unequal_operation(n:symbol)
-    .input jump_unequal_operation
-
-    .decl conditional_mov(EA:address)
-    .input conditional_mov
 
     .decl move_operation(Operation:symbol)
     .input move_operation
@@ -154,70 +130,8 @@
 .decl symbolic_operand(ea:address, index:operand_index, value:address, type:symbol)
 .input symbolic_operand
 
-.decl unconditional_jump(n:address)
-.input unconditional_jump
-
-.decl conditional_jump(src:address)
-.input conditional_jump
-
-
-.decl may_fallthrough(o:address,d:address)
-.input may_fallthrough
-
-.decl direct_jump(src:address, dest:address)
-.input direct_jump
-
-.decl direct_call(EA:address,Dest:address)
-.input direct_call
-
-.decl code(EA:address)
-.input code
-
-.decl block_last_instruction(Block:address,EA:address)
-.input block_last_instruction
-
-.decl block(Block:address)
-.input block
-
-.decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Operation:symbol)
-.input jump_table_start
-
-.decl relative_address(EA:address,Size:unsigned,TableStart:address,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
-.input relative_address
-
-.decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
-.input lsda_callsite_addresses
-
-.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)
-.input cmp_immediate_to_reg
-
-.decl next(n:address,m:address)
-.input next
-
-.decl is_xor_reset(EA:address)
-.input is_xor_reset
-
-.decl fde_addresses(start:address, end:address)
-.input fde_addresses
-
-.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:operand_index,Immediate:number)
-.input op_immediate_and_reg
-
 .decl op_indirect_contains_reg(op:operand_code,reg:register)
 .input op_indirect_contains_reg
-
-.decl reg_jump(src:address,Reg:symbol)
-.input reg_jump
-
-.decl data_byte(ea:address,value:unsigned)
-.input data_byte
-
-
-.decl pc_relative_operand(src:address,index:operand_index, dest:address)
-.input pc_relative_operand
-
-.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
-.input got_relative_operand
 
 .decl value_reg(EA:address,Reg:register,
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
