@@ -8,7 +8,7 @@ stages:
   - build-image
   - test
   - build-package
-  - test_package
+  - test-package
   - deploy
 
 default:
@@ -36,8 +36,7 @@ build-image:
     refs:
       - main
     changes:
-      - .ci/Dockerfile
-      - .ci/gitlab-ci.yaml
+      - .ci/*
 
 check-format:
   stage: check-format
@@ -94,7 +93,7 @@ build_package:
 test_package:
   variables:
     GIT_STRATEGY: none
-  stage: test_package
+  stage: test-package
   before_script: []
   script:
     - for f in dist/*.whl; do python3 -m pip install $f; done
