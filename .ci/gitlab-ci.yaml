@@ -70,8 +70,8 @@ test:
   image: $IMAGE_NAME
   stage: test
   script:
-    - wget -O - $INTERNAL_APT_REPO/conf/apt.gpg.key | apt-key add -
-    - echo "deb $INTERNAL_APT_REPO $(lsb_release -sc) $APT_COMPONENT" >> /etc/apt/sources.list
+    - wget -O - $APT_REPO/conf/apt.gpg.key | apt-key add -
+    - echo "deb $APT_REPO $(lsb_release -sc) $APT_COMPONENT" >> /etc/apt/sources.list
     - apt-get update -y
     - apt-get install -y gtirb-pprinter ddisasm
     - ./tests/build_tests.sh
@@ -83,6 +83,9 @@ test:
     reports:
       junit: report.xml
       cobertura: coverage.xml
+  variables:
+    APT_REPO: $INTERNAL_APT_REPO
+    APT_COMPONENT: unstable
 
 build_package:
   stage: build-package
