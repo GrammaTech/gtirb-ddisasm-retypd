@@ -134,4 +134,4 @@ if __name__ == "__main__":
     hf = TestHeader(args.file, args.pointer_size)
 
     for val in hf.namespace.values():
-        print(val.declare(val.name))
+        print(val.pretty_print(val.name))

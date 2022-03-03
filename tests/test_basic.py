@@ -87,8 +87,8 @@ def test_types_correctly(ir, header, tmp_path):
         inferred_type = type_outs[item]
 
         print(item)
-        print(inferred_type.declare(inferred_type.name))
-        print(header_type.declare(header_type.name))
+        print(inferred_type.pretty_print(inferred_type.name))
+        print(header_type.pretty_print(header_type.name))
 
         valid, msg = is_type_equivalent(inferred_type, header_type, set())
         if not valid:
