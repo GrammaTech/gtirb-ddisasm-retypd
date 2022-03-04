@@ -41,8 +41,42 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("ir,header", gtirb_loaded)
 
 
+@pytest.mark.commit
+def test_derived_constraints(ir, header, tmp_path):
+    dr = DdisasmRetypd(ir, tmp_path)
+    derived_constraints_, _ = dr._solve_constraints(tmp_path, False)
+    derived_constraints = {
+        str(dtv): derived_constraint
+        for dtv, derived_constraint in derived_constraints_.items()
+    }
+
+    for (item, header_type) in header.namespace.items():
+        if not isinstance(header_type, FunctionType):
+            continue
+
+        if item not in header.constraints:
+            continue
+
+        derived_constraint = derived_constraints[item]
+        gt_constraint = header.constraints[item]
+
+        for constraint in gt_constraint:
+            print("-------")
+            print(item)
+            print("Ground Truth")
+            print(gt_constraint)
+            print("Derived ")
+            print(derived_constraint)
+
+            assert constraint in derived_constraint.subtype, (
+                f"Failed to find {constraint} in derived constraint of "
+                f"function {item}"
+            )
+
+
+@pytest.mark.nightly
 def test_correct_num_args(ir, header, tmp_path):
-    """ Validate that we get the number """
+    """ Validate that we get the number of arguments """
     dr = DdisasmRetypd(ir, tmp_path)
     type_outs = {str(dtv): ctype for dtv, ctype in dr(compiled=False).items()}
 
@@ -60,6 +94,7 @@ def test_correct_num_args(ir, header, tmp_path):
         ), f"Failed to get correct parameters for {item}"
 
 
+@pytest.mark.nightly
 def test_types_correctly(ir, header, tmp_path):
     """ Validate that we are generating types correctly """
     dr = DdisasmRetypd(ir, tmp_path)

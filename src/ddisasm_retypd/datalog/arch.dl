@@ -1,3 +1,4 @@
+// Zero- and sign-extension opcodes
 .decl zero_extend(Operation:symbol)
 zero_extend("MOVZX") :- binary_isa("X64").
 

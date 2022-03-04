@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import gtirb
 import logging
 import tempfile
@@ -18,6 +18,7 @@ from pathlib import Path
 
 from retypd.c_type_generator import CTypeGenerator
 from retypd.c_types import CType, FunctionType, PointerType, StructType
+from retypd.solver import Sketches
 from retypd.parser import SchemaParser
 from retypd.schema import ConstraintSet, DerivedTypeVariable, Program
 from retypd.solver import Solver, LogLevel
@@ -112,18 +113,24 @@ class DdisasmRetypd:
 
         return constraint_map
 
-    def __call__(
-        self, debug_dir: Optional[Path] = None, compiled: bool = False,
-    ) -> Dict[DerivedTypeVariable, CType]:
-        """ Execute the retypd algorithm
-        :param debug_dir: Directory to write debug output if desired
-        :returns: Dictionary of DTV to generated C-type
+    def _solve_constraints(
+        self, debug_dir: Optional[Path], compiled: bool
+    ) -> Tuple[
+        Dict[DerivedTypeVariable, ConstraintSet],
+        Dict[DerivedTypeVariable, Sketches],
+    ]:
+        """ Solve the current program's constraint set
+        :param debug_dir: Directory to output debug information to
+        :param compiled: Whether to compile the souffle program or not
+        :returns: A tuple of the mapping of the output to its derived
+            constraint set, and a a mapping of the output to its sketch
         """
         if self.facts_dir:
             self._exec_souffle(self.facts_dir, debug_dir, compiled=compiled)
         else:
             with tempfile.TemporaryDirectory() as tmpdir:
                 self._exec_souffle(Path(tmpdir), debug_dir, compiled=compiled)
+
         constraint_map = self._insert_subtypes(debug_dir is not None)
         program = Program(DdisasmLattice(), {}, constraint_map, self.callgraph)
 
@@ -149,7 +156,17 @@ class DdisasmRetypd:
                     except KeyError:
                         logging.warning(f"Cannot draw {dtv} sketch")
 
+        return derived_constraints, sketches
+
+    def __call__(
+        self, debug_dir: Optional[Path] = None, compiled: bool = False,
+    ) -> Dict[DerivedTypeVariable, CType]:
+        """ Execute the retypd algorithm
+        :param debug_dir: Directory to write debug output if desired
+        :returns: Dictionary of DTV to generated C-type
+        """
         addr_size, reg_size = get_arch_sizes(self.ir)
+        _, sketches = self._solve_constraints(debug_dir, compiled)
 
         gen = CTypeGenerator(
             sketches,
@@ -157,7 +174,7 @@ class DdisasmRetypd:
             DdisasmLatticeCTypes(),
             reg_size,
             addr_size,
-            verbose=loglevel,
+            verbose=LogLevel.DEBUG if debug_dir else LogLevel.QUIET,
         )
         return gen()
 

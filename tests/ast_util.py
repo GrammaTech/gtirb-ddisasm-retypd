@@ -9,19 +9,30 @@ from retypd.c_types import (
     Field,
     VoidType,
 )
+from retypd.parser import SchemaParser
+from retypd.schema import ConstraintSet
 from pathlib import Path
 import asts
 import logging
+import re
 
 
 class TestHeader:
+    """A header from a test file"""
+
     def __init__(self, header_file: Path, pointer_size: int):
         self.header_file = header_file
         self.pointer_size = pointer_size
         self.namespace = {}
+        self.constraints = {}
+        self._preceding_comment = None
         self._load_ast()
 
     def _load_type_ast(self, type_ast: asts.AST) -> CType:
+        """Load a type object from an AST
+        :param type_ast: AST of the type
+        :returns: CType object loaded
+        """
         if isinstance(type_ast, asts.CPrimitiveType):
             cstr = type_ast.source_text
             if cstr == "int":
@@ -40,6 +51,12 @@ class TestHeader:
     def _apply_pointers(
         self, type: CType, ast: asts.AST
     ) -> Tuple[CType, asts.AST]:
+        """Apply pointer declarators to a type object
+        :param type: Type object to apply pointers to
+        :param ast: AST object that has the pointer declarators to unwrap
+        :returns: CType with pointers applied, and AST object with pointer
+            declarators unwrapped
+        """
         while isinstance(ast, asts.CPointerDeclarator):
             type = PointerType(type, width=self.pointer_size)
             ast = ast.children[0]
@@ -77,6 +94,9 @@ class TestHeader:
 
                 self.namespace[name] = FunctionType(return_type, params, name)
 
+                if self._preceding_comment:
+                    self.constraints[name] = self._preceding_comment
+                    self._preceding_comment = None
             elif isinstance(ast, asts.CStructSpecifier):
                 if len(ast.children) == 1:
                     name = ast.children[0].source_text
@@ -109,7 +129,19 @@ class TestHeader:
                     self.namespace[name].set_fields(fields)
                 else:
                     self.namespace[name] = StructType(fields, name)
-            elif isinstance(ast, (asts.CEmptyStatement, asts.CommentAST)):
+            elif isinstance(ast, asts.CommentAST):
+                comment = ast.source_text
+                try:
+                    constraints = [
+                        SchemaParser.parse_constraint(comment_line)
+                        for comment_line in re.findall(r"\!\s*(.*)", comment)
+                    ]
+
+                    if len(constraints) > 0:
+                        self._preceding_comment = ConstraintSet(constraints)
+                except ValueError as e:
+                    logging.warning(f"Failed to parse constraint: {e}")
+            elif isinstance(ast, (asts.CEmptyStatement)):
                 continue
             else:
                 logging.warning(f"Failed unknown {ast}")
@@ -135,3 +167,6 @@ if __name__ == "__main__":
 
     for val in hf.namespace.values():
         print(val.pretty_print(val.name))
+
+        if val.name in hf.constraints:
+            print(hf.constraints[val.name])
