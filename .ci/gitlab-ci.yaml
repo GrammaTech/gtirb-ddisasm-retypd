@@ -2,6 +2,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_STRATEGY: clone
   IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+  PYTEST_MARKER: commit
 
 stages:
   - check-format
@@ -77,7 +78,7 @@ test:
     - ./tests/build_tests.sh
     - python3 -m pip install --upgrade pip
     - python3 -m pip install --pre --extra-index-url=$EXTRA_INDEX_URL .[test]
-    - pytest --cov=gtirb_ddisasm_retypd --cov-report=term -m commit --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
+    - pytest --cov=gtirb_ddisasm_retypd --cov-report=term -m $PYTEST_MARKER --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
   artifacts:
     when: always
     reports:
