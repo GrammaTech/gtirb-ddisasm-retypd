@@ -13,7 +13,7 @@ for SOURCE in $SRCDIR/*.c;
 do
     BINARY=$(basename $SOURCE .c)
 
-    for LEVEL in 0 1 2 3
+    for LEVEL in 1 2 3
     do
         echo "Building $BINARY at -O$LEVEL"
         LVLBIN="$BINDIR/$BINARY-O$LEVEL"
