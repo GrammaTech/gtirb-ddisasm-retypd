@@ -115,3 +115,8 @@ The high level dataflow of this looks like:
    per-function information, types are only generated for the inputs and
    outputs of a given function, as this is what retypd is currently labeling as
    "interesting."
+ - Currently retypd is responsible for determining the FunctionType output,
+   which will correspondingly determine the ultimate number of arguments that a
+   function is said to have. However this may be in conflict with the arguments
+   our analysis deduced, since retypd may simplify out a `.in_*` relation that
+   causes fewer parameters to be present in the final output.
