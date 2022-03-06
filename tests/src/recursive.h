@@ -6,6 +6,8 @@ struct recursive_type {
 };
 
 /**
+ * Derived constraints for test_recursive
+ *
  *! int ⊑ test_recursive.in_0.store.σ4@0
  *! void ⊑ test_recursive.out
  *! test_recursive.in_0.store.σ8@8.store ⊑ test_recursive.in_0.store

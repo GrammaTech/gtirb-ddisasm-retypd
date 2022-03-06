@@ -18,6 +18,7 @@ def pytest_generate_tests(metafunc):
         source_dir = Path(__file__).parent / "src"
         gtirbs = list(gtirb_dir.glob("*.gtirb"))
 
+        # Load all headers in <ROOT>/src/*.h
         gtirb_headers = {
             gtirb_file: (
                 source_dir / f'{gtirb_file.name.rsplit("-", maxsplit=1)[0]}.h'
@@ -25,24 +26,76 @@ def pytest_generate_tests(metafunc):
             for gtirb_file in gtirbs
         }
 
+        # Assuming x64 for now
         headers = set(gtirb_headers.values())
-
         loaded_headers = {header: TestHeader(header, 64) for header in headers}
 
-        gtirb_loaded = [
-            pytest.param(
-                gtirb.IR.load_protobuf(str(gtirb_file)),
-                loaded_headers[header_file],
-                id=gtirb_file.name,
-            )
-            for (gtirb_file, header_file) in gtirb_headers.items()
-        ]
+        # Load GTIRB corresponding to the headers
+        if "level" in metafunc.fixturenames:
+            gtirb_loaded = [
+                pytest.param(
+                    gtirb.IR.load_protobuf(str(gtirb_file)),
+                    loaded_headers[header_file],
+                    gtirb_file.stem.rsplit("-", maxsplit=1)[1],
+                    id=gtirb_file.name,
+                )
+                for (gtirb_file, header_file) in gtirb_headers.items()
+            ]
 
-        metafunc.parametrize("ir,header", gtirb_loaded)
+            metafunc.parametrize("ir,header,level", gtirb_loaded)
+        else:
+            gtirb_loaded = [
+                pytest.param(
+                    gtirb.IR.load_protobuf(str(gtirb_file)),
+                    loaded_headers[header_file],
+                    id=gtirb_file.name,
+                )
+                for (gtirb_file, header_file) in gtirb_headers.items()
+            ]
+
+            metafunc.parametrize("ir,header", gtirb_loaded)
 
 
 @pytest.mark.commit
+def test_generated_constraints(ir, header, level, tmp_path):
+    dr = DdisasmRetypd(ir, tmp_path)
+    dr._exec_souffle(dr.facts_dir, tmp_path)
+    constraint_map = dr._insert_subtypes()
+    generated_constraints = {
+        str(dtv): derived_constraint
+        for dtv, derived_constraint in constraint_map.items()
+    }
+
+    for (item, header_type) in header.namespace.items():
+        if not isinstance(header_type, FunctionType):
+            continue
+
+        if item not in header.generated_constraints:
+            continue
+
+        if level not in header.generated_constraints[item]:
+            continue
+
+        gt_constraint = header.generated_constraints[item][level]
+        generated_constraint = generated_constraints[item]
+
+        for constraint in gt_constraint:
+            print("-------")
+            print(item)
+            print("Ground Truth")
+            print(gt_constraint)
+            print("Derived ")
+            print(generated_constraint)
+
+            assert constraint in generated_constraint.subtype, (
+                f"Failed to find {constraint} in derived constraint of "
+                f"function {item}"
+            )
+
+
+@pytest.mark.nightly
 def test_derived_constraints(ir, header, tmp_path):
+    """ Verify that the constraints derived from retypd are valid """
     dr = DdisasmRetypd(ir, tmp_path)
     derived_constraints_, _ = dr._solve_constraints(tmp_path, False)
     derived_constraints = {
@@ -54,11 +107,11 @@ def test_derived_constraints(ir, header, tmp_path):
         if not isinstance(header_type, FunctionType):
             continue
 
-        if item not in header.constraints:
+        if item not in header.derived_constraints:
             continue
 
         derived_constraint = derived_constraints[item]
-        gt_constraint = header.constraints[item]
+        gt_constraint = header.derived_constraints[item]
 
         for constraint in gt_constraint:
             print("-------")

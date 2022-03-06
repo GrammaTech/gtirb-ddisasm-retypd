@@ -67,7 +67,7 @@ class DdisasmRetypd:
             logging.warning(f"Multiple blocks at {loc:08x}")
             block = blocks[0]
         else:
-            logging.warning(f"No blocks at {loc:08x}")
+            logging.debug(f"No blocks at {loc:08x}")
             return None
 
         return gtirb.Offset(block, loc - (block.address or 0))

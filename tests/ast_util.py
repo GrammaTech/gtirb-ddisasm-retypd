@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Tuple
 from retypd.c_types import (
     CType,
@@ -24,8 +25,10 @@ class TestHeader:
         self.header_file = header_file
         self.pointer_size = pointer_size
         self.namespace = {}
-        self.constraints = {}
-        self._preceding_comment = None
+        self.derived_constraints = {}
+        self.generated_constraints = {}
+        self._preceding_dc = None
+        self._preceding_gc = None
         self._load_ast()
 
     def _load_type_ast(self, type_ast: asts.AST) -> CType:
@@ -71,6 +74,7 @@ class TestHeader:
 
         for ast in self.ast_root.children:
             if isinstance(ast, asts.CDeclaration):
+                # Parse the C declaration to a function in the namespace
                 ast_return = ast.type
                 return_type = self._load_type_ast(ast_return)
 
@@ -94,11 +98,19 @@ class TestHeader:
 
                 self.namespace[name] = FunctionType(return_type, params, name)
 
-                if self._preceding_comment:
-                    self.constraints[name] = self._preceding_comment
-                    self._preceding_comment = None
+                # If this precedes generated/derived constraints, assign those
+                # in the global mapping.
+                if self._preceding_dc:
+                    self.derived_constraints[name] = self._preceding_dc
+                    self._preceding_dc = None
+                if self._preceding_gc:
+                    self.generated_constraints[name] = self._preceding_gc
+                    self._preceding_gc = None
             elif isinstance(ast, asts.CStructSpecifier):
+                # Parse the C struct declaration to a structure in the
+                # namespace
                 if len(ast.children) == 1:
+                    # Body-less instantaition
                     name = ast.children[0].source_text
                     self.namespace[name] = StructType([], name=name)
                     continue
@@ -113,13 +125,14 @@ class TestHeader:
                         field_type, field_decl
                     )
                     field_name = field_decl.source_text
+
+                    # Handle some pointer-sized alignment
                     offset = (
                         fields[-1].offset + fields[-1].ctype.size
                         if len(fields) > 0
                         else 0
                     )
                     align = self.pointer_size // 8
-
                     padding = (align - (offset % align)) % align
                     offset = offset + padding
 
@@ -130,15 +143,33 @@ class TestHeader:
                 else:
                     self.namespace[name] = StructType(fields, name)
             elif isinstance(ast, asts.CommentAST):
+                # Parse comments into declaration
                 comment = ast.source_text
+
                 try:
-                    constraints = [
+                    derived_constraints = [
                         SchemaParser.parse_constraint(comment_line)
                         for comment_line in re.findall(r"\!\s*(.*)", comment)
                     ]
 
-                    if len(constraints) > 0:
-                        self._preceding_comment = ConstraintSet(constraints)
+                    generated_constraints = defaultdict(list)
+
+                    for level, constraint in re.findall(
+                        r"\#\[(.*)\]\s*(.*)", comment
+                    ):
+                        generated_constraints[level].append(
+                            SchemaParser.parse_constraint(constraint)
+                        )
+
+                    if len(derived_constraints) > 0:
+                        self._preceding_dc = ConstraintSet(derived_constraints)
+                    if len(generated_constraints) > 0:
+                        # Append generated constraints to preceding ones
+                        if self._preceding_gc is None:
+                            self._preceding_gc = {}
+
+                        for (lvl, consts) in generated_constraints.items():
+                            self._preceding_gc[lvl] = consts
                 except ValueError as e:
                     logging.warning(f"Failed to parse constraint: {e}")
             elif isinstance(ast, (asts.CEmptyStatement)):
