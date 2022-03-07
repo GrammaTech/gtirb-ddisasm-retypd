@@ -22,22 +22,37 @@ import uuid
 
 
 class RetypdGtirbWriter:
+    """ Write gtirb-type data from CType data from retypd """
+
     def __init__(self, module: gtirb.Module):
         self.module = module
         self.types = GtirbTypes(self.module)
         self.translate_cache = {}
 
     def _unknown_type(self, size: int) -> uuid.UUID:
+        """ Generate a unique unknown type of a given size
+        :param size: Size in bytes of the unknown type
+        :returns: gtirb-type UUID of allocated type
+        """
         unk = UnknownType(uuid.uuid4(), self.types, size)
         self.types.map[unk.uuid] = unk
         return unk.uuid
 
     def _add_type(self, ctype: c_types.CType, type: AbstractType) -> uuid.UUID:
+        """ Add a CType object's new gtirb-type
+        :param ctype: CType object whose gtirb-type is being added
+        :param type: gtirb-type object who is being added
+        :returns: UUID of the new gtirb-type
+        """
         self.types.map[type.uuid] = type
         self.translate_cache[ctype] = type.uuid
         return type.uuid
 
     def _translate_ctype(self, ctype: c_types.CType) -> uuid.UUID:
+        """ Translate a CType object to a gtirb-retypd object
+        :param ctype: CType object to translate
+        :returns: Allocated UUID for that gtirb-type object
+        """
         if ctype is None:
             return self._unknown_type(0)
 
@@ -96,6 +111,9 @@ class RetypdGtirbWriter:
     def add_types(
         self, derived_types: Dict[DerivedTypeVariable, c_types.CType]
     ):
+        """ Add all types from the output to a GTIRB module
+        :param derived_types: Output CType map from retypd
+        """
         functions = Function.build_functions(self.module)
         name2func = {function.names[0]: function for function in functions}
         prototypeTable = {}
