@@ -6,6 +6,36 @@ with [ddisasm](https://github.com/GrammaTech/ddisasm). This relies on internal
 souffle facts and outputs derived in ddisasm that are encoded in the AuxData
 section of the GTIRB file.
 
+## Dependencies
+
+`gtirb-ddisasm-retypd` requires the following dependencies:
+
+- [ddisasm](https://github.com/GrammaTech/ddisasm) to lift files to
+  GTIRB, however, this is not a runtime dependency.
+- [gtirb](https://github.com/GrammaTech/gtirb)
+- [gtirb-types](https://github.com/GrammaTech/gtirb-types)
+
+## Usage
+
+In order to use `gtirb-ddisasm-retypd`, lift a binary to GTIRB using ddisasm,
+then execute `gtirb-ddisasm-retypd input.gtirb output.gtirb`, where
+output.gtirb will have a copy of the input.gtirb, now with annotated types.
+
+```
+usage: gtirb-ddisasm-retypd [-h] [-d DEBUG_DIR] gtirb dest
+
+Run retypd on ddisasm-generated GTIRB files
+
+positional arguments:
+  gtirb                 ddisasm generated GTIRB to operate on
+  dest                  Path to write GTIRB to
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d DEBUG_DIR, --debug-dir DEBUG_DIR
+                        retypd constraint gen debug
+```
+
 ## Structure
 
 The high level dataflow of this looks like:
