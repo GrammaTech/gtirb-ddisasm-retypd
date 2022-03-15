@@ -7,7 +7,7 @@ from typing import Dict, Set, Tuple
 
 
 def filter_name(function: Function) -> str:
-    """ Do name filtering similar to that which is implemented for souffle
+    """ Do name filtering identical to the one implemented for souffle
     :param function: Function to get the filtered name of
     :returns: String of filtered name
     """
@@ -57,12 +57,23 @@ def get_arch_sizes(ir: gtirb.IR) -> Tuple[int, int]:
     """
     module = ir.modules[0]
 
-    if module.isa == gtirb.module.Module.ISA.X64:
+    if module.isa in (
+        gtirb.module.Module.ISA.X64,
+        gtirb.module.Module.ISA.ARM64,
+        gtirb.module.Module.ISA.MIPS64,
+        gtirb.module.Module.ISA.PPC64,
+    ):
         return (8, 8)
     elif module.isa == gtirb.module.Module.ISA.PPC32:
         return (4, 8)
-
-    return (4, 4)
+    elif module.isa in (
+        gtirb.module.Module.ISA.ARM,
+        gtirb.module.Module.ISA.IA32,
+        gtirb.module.Module.ISA.MIPS32,
+    ):
+        return (4, 4)
+    else:
+        raise NotImplementedError()
 
 
 def extract_souffle_relations(ir: gtirb.IR, directory: Path):

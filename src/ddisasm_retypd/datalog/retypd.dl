@@ -137,8 +137,8 @@ subtype_constraint(Func, Constraint, "return-to-register read") :-
 subtype_constraint(Func, Constraint, "register-to-sink") :-
     subtype_reg_typesink(UFunc, EA, Reg, Sink),
     filter_name(Func, UFunc),
-    Dest=cat(Reg, "_", to_string(EA)),
-    Constraint=cat(Sink, " <= ", Dest).
+    Src=cat(Reg, "_", to_string(EA)),
+    Constraint=cat(Src, " <= ", Sink).
 
 // Functions which have no return values have their outputs subtyped to void to
 // improve their type output from the retypd solver
@@ -150,5 +150,5 @@ subtype_constraint(Func, Constraint, "func-to-void") :-
 subtype_constraint(Func, Constraint, "register-called") :-
     subtype_called(UFunc, EA, Reg),
     filter_name(Func, UFunc),
-    Dest=cat(Reg, "_", to_string(EA)),
-    Constraint=cat("func <= ", Dest).
+    Src=cat(Reg, "_", to_string(EA)),
+    Constraint=cat(Src, " <= call").
