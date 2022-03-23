@@ -38,11 +38,11 @@ def execute_souffle(
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = debug_dir or Path(tmpdir)
-        compile = (
-            ["--compile", f"--generate={tmpdir_path}/prog.cpp"]
-            if compiled
-            else []
-        )
+        program_path = tmpdir_path / "prog.cpp"
+
+        compile_flags = []
+        if compiled:
+            compile_flags = ["--compile", f"--generate={program_path}"]
 
         subprocess.call(
             [
@@ -50,9 +50,9 @@ def execute_souffle(
                 f"--fact-dir={facts.resolve()}",
                 f"--output-dir={tmpdir_path}",
                 "--macro='DEBUG=1'",
+                *compile_flags,
+                f"{datalog.resolve()}",
             ]
-            + compile
-            + [f"{datalog.resolve()}"]
         )
 
         for output_rel in output_rels:

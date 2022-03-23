@@ -1,4 +1,5 @@
 // Generate pairs of instructions that have local edges to each other
+// TODO: This might be useful to upstream into ddisasm
 .decl local_next(source: address, dest: address)
 local_next(EA, EA_next) :-
     code_in_refined_block(EA, Block),

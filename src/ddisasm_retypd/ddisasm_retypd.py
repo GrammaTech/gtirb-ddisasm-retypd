@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import gtirb
 import logging
 import tempfile
@@ -78,11 +78,13 @@ class DdisasmRetypd:
         return gtirb.Offset(block, loc - (block.address or 0))
 
     def _insert_subtypes(
-        self, add_comments: bool = False
+        self, add_comments: bool = False, debug_categories: List[str] = None
     ) -> Dict[str, ConstraintSet]:
         """ Add subtypes to the constraints map
-        :param add_comments: If True, a comments map will be populated iwth
+        :param add_comments: If True, a comments map will be populated with
             subtype constraints for visualization + debugging
+        :param debug_categories: Which categories of relations to insert as
+            comments for the output GTIRB
         :returns: Dictionary mapping function to their constraint sets and the
             variable set of known functions to analyze
         """
@@ -91,12 +93,13 @@ class DdisasmRetypd:
 
         comments = defaultdict(set)
 
-        if "comment" in self._souffle_out:
-            for (addr, comment) in self._souffle_out["comment"]:
-                offset = self.addr_to_offset(int(addr))
+        if "comment" in self._souffle_out and debug_categories is not None:
+            for (addr, comment, category) in self._souffle_out["comment"]:
+                if category in debug_categories:
+                    offset = self.addr_to_offset(int(addr))
 
-                if offset:
-                    comments[offset].add(comment)
+                    if offset:
+                        comments[offset].add(comment)
 
         constraint_map = defaultdict(ConstraintSet)
 
@@ -119,7 +122,10 @@ class DdisasmRetypd:
         return constraint_map
 
     def _solve_constraints(
-        self, debug_dir: Optional[Path], compiled: bool
+        self,
+        debug_dir: Optional[Path],
+        compiled: bool,
+        debug_categories: List[str] = None,
     ) -> Tuple[
         Dict[DerivedTypeVariable, ConstraintSet],
         Dict[DerivedTypeVariable, Sketches],
@@ -127,6 +133,8 @@ class DdisasmRetypd:
         """ Solve the current program's constraint set
         :param debug_dir: Directory to output debug information to
         :param compiled: Whether to compile the souffle program or not
+        :param debug_categories: Which categories of relations to insert as
+            comments for the output GTIRB
         :returns: A tuple of the mapping of the output to its derived
             constraint set, and a a mapping of the output to its sketch
         """
@@ -136,7 +144,9 @@ class DdisasmRetypd:
             with tempfile.TemporaryDirectory() as tmpdir:
                 self._exec_souffle(Path(tmpdir), debug_dir, compiled=compiled)
 
-        constraint_map = self._insert_subtypes(debug_dir is not None)
+        constraint_map = self._insert_subtypes(
+            debug_dir is not None, debug_categories
+        )
         program = Program(DdisasmLattice(), {}, constraint_map, self.callgraph)
 
         logging.info("Solving constraints")
@@ -164,14 +174,22 @@ class DdisasmRetypd:
         return derived_constraints, sketches
 
     def __call__(
-        self, debug_dir: Optional[Path] = None, compiled: bool = False,
+        self,
+        debug_dir: Optional[Path] = None,
+        compiled: bool = False,
+        debug_categories: List[str] = None,
     ) -> Dict[DerivedTypeVariable, CType]:
         """ Execute the retypd algorithm
         :param debug_dir: Directory to write debug output if desired
+        :param compiled: Whether or not to compile the souffle program
+        :param debug_categories: Which categories of relations to insert as
+            comments for the output GTIRB
         :returns: Dictionary of DTV to generated C-type
         """
         addr_size, reg_size = get_arch_sizes(self.ir)
-        _, sketches = self._solve_constraints(debug_dir, compiled)
+        _, sketches = self._solve_constraints(
+            debug_dir, compiled, debug_categories
+        )
 
         gen = CTypeGenerator(
             sketches,
@@ -216,11 +234,11 @@ def print_user_types(types: Dict[DerivedTypeVariable, CType]):
     for type_ in user_defs:
         print(type_.pretty_print(type_.name))
 
-    for type in types.values():
-        if hasattr(type, "name"):
-            print(type.pretty_print(type.name))
+    for type_ in types.values():
+        if hasattr(type_, "name"):
+            print(type_.pretty_print(type_.name))
         else:
-            print(type.pretty_print(""))
+            print(type_.pretty_print(""))
 
 
 def main():
@@ -234,6 +252,11 @@ def main():
     parser.add_argument(
         "-d", "--debug-dir", type=Path, help="retypd constraint gen debug"
     )
+    parser.add_argument(
+        "--debug-category",
+        action="append",
+        help="Categories of relations to include as comments",
+    )
     args = parser.parse_args()
     logging.getLogger().setLevel(
         logging.DEBUG if args.debug_dir is not None else logging.INFO
@@ -243,7 +266,7 @@ def main():
 
     logging.debug(f"Outputting relations to {args.debug_dir}")
     dr = DdisasmRetypd(ir, args.debug_dir)
-    type_outs = dr(args.debug_dir)
+    type_outs = dr(args.debug_dir, debug_categories=args.debug_category)
 
     if args.debug_dir is not None:
         print_user_types(type_outs)
