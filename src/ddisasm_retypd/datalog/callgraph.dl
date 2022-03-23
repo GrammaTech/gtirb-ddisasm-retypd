@@ -1,3 +1,19 @@
+// Determine whether there is a call at EA hat is a no-return
+.decl no_return_call(EA:address)
+no_return_call(EA) :-
+    cfg_edge(EA, _, _, _, "call"),
+    !cfg_edge(EA, _, _, _, "fallthrough").
+
+// Generate pairs of blocks that have local edges to each other
+.decl block_next(source:address, dest:address)
+block_next(Source, Dest) :-
+    cfg_edge(Source, Dest, _, _, Label),
+    (
+        Label="fallthrough"
+        ;
+        Label="branch"
+    ).
+
 // Generate a relation which contains a call graph for the program
 .decl call_graph(call_from:symbol, call_to:symbol)
 call_graph(CallFrom, CallTo) :-

@@ -11,19 +11,6 @@
         multiplier:number, offset:number, size_value:unsigned)
 .input op_indirect
 
-.decl instruction_get_operation(ea:address, operation:symbol)
-.input  instruction_get_operation
-
-.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
-.input instruction_get_op
-
-.decl instruction_get_src_op(ea:address, Index:operand_index, op:operand_code)
-.input instruction_get_src_op
-
-.decl instruction_get_dest_op(ea:address, index:number, op:operand_code)
-.input instruction_get_dest_op
-
-
 .decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
@@ -41,8 +28,8 @@
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
 
-.decl code_in_block(ea:address, block:address)
-.input code_in_block
+.decl code_in_refined_block(ea:address, block:address)
+.input code_in_refined_block
 
 .decl function_symbol(ea:address, name:symbol)
 .input function_symbol
@@ -64,12 +51,6 @@
 
 .decl reg_loaded_from_stack(EA:address, Reg:register, Base:register, StackPos:number, StackFrameDefinedAt: address)
 .input reg_loaded_from_stack
-
-.decl local_next(ea:address, ea_next:address)
-.input local_next
-
-.decl block_next(ea:address, block:address)
-.input block_next
 
 .comp abs_arch {
     .decl pointer_size(N: unsigned)
@@ -116,6 +97,24 @@
 
     .decl reg_arithmetic_operation(EA:address,Dst:register,Src:register,Mult:number,Offset:number)
     .input reg_arithmetic_operation
+
+    .decl store_operation(Operation:symbol)
+    .input store_operation
+
+    .decl op_does_not_read_dest_reg(Operation:symbol)
+    .input op_does_not_read_dest_reg
+
+    .decl write_only_operation(Operation:symbol)
+    .input write_only_operation
+
+    .decl one_op_write(Operation:symbol)
+    .input one_op_write
+
+    .decl delay_slot(BranchEA:address,EA:address)
+    .input delay_slot
+
+    .decl halt_operation(Operation:symbol)
+    .input halt_operation
 }
 
 .init arch = abs_arch
@@ -136,3 +135,142 @@
 .decl value_reg(EA:address,Reg:register,
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
 .input value_reg
+
+//////////////////////////////////////////////////////////////////////////////
+// Relations directly using the same implementation from ddisasm, but we compute
+// them locally so as not to blow up the size of the output of ddisasm. This is
+// however not all the relations we are recomputing from ddisasm, ones that are
+// the same relation but computed in a different way than the source are
+// computed in other files, that are organized with respect to the nature of the
+// relation. This is so that if we need to check which relations may need to be
+// updated from the ddisasm source, it should only be these following relations
+.decl instruction_get_operation(ea:address, operation:symbol)
+
+instruction_get_operation(EA,Operation):-
+    instruction(EA,_,_,Operation,_,_,_,_,_,_).
+
+.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
+
+instruction_get_op(EA,Index,Op):-
+    instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
+    (
+        Op1 != 0,
+        Op = Op1, Index = 1,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4 // avoid warning
+        ;
+        Op2 != 0,
+        Op = Op2, Index = 2,
+        Op1 = Op1, Op3 = Op3, Op4 = Op4 // avoid warning
+        ;
+        Op3 != 0,
+        Op = Op3, Index = 3,
+        Op1 = Op1, Op2 = Op2, Op4 = Op4 // avoid warning
+        ;
+        Op4 != 0,
+        Op = Op4, Index = 4,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
+    ).
+
+.decl instruction_get_src_op(ea:address, Index:operand_index, op:operand_code)
+
+instruction_get_src_op(EA,2,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
+
+//when the dest is used as a source as well
+instruction_get_src_op(EA,Index,Op2):-
+    instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
+    Index = 2,
+    !arch.mov(EA),
+    !arch.op_does_not_read_dest_reg(Operation),
+    !arch.write_only_operation(Operation).
+
+instruction_get_src_op(EA,Index,Op):-
+    !arch.store_operation(Operation),
+    (
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+    ),
+    !arch.write_only_operation(Operation).
+
+.decl instruction_get_dest_op(ea:address, index:number, op:operand_code)
+
+instruction_get_dest_op(EA,1,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
+
+instruction_get_dest_op(EA,Index,Op):-
+    !arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.read_only_operation(Operation),
+    (
+        Op4 = 0,
+        Op3 = 0,
+        Op2 != 0,
+        Op = Op2,
+        Index = 2
+        ;
+        Op4 = 0,
+        Op3 != 0,
+        Op = Op3,
+        Index = 3,
+        Op2 = Op2 // avoid warning
+        ;
+        Op4 != 0,
+        Op = Op4,
+        Index = 4,
+        Op2 = Op2, Op3 = Op3 // avoid warning
+    ).
+
+instruction_get_dest_op(EA,1,Op):-
+    instruction(EA,_,_,Operation,Op,0,0,0,_,_),
+    arch.one_op_write(Operation).
+
+.decl next(n:address,m:address)
+
+next(EA,EA+Size):-
+    instruction(EA,Size,_,_,_,_,_,_,_,_).
+
+
+.decl unconditional_return(EA:address)
+
+unconditional_return(EA):-
+    arch.return(EA),
+    !arch.conditional(EA).
+
+.decl unconditional_jump(n:address)
+
+unconditional_jump(EA):-
+    arch.jump(EA),
+    !arch.conditional(EA).
+
+.decl halt(EA:address)
+
+halt(EA):-
+    arch.halt_operation(Operation),
+    instruction_get_operation(EA,Operation).
+
+.decl may_fallthrough(o:address,d:address)
+
+// Branch with a delay-slot can always fallthrough
+may_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(From,To).
+
+// Delay-slot can fallthrough if the corresponding branch is not unconditional
+// or a return.
+may_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(Prev,From),
+    !unconditional_return(Prev),
+    !unconditional_jump(Prev).
+
+// Common case
+may_fallthrough(From,To):-
+    next(From,To),
+    !arch.delay_slot(_,From),
+    !unconditional_return(From),
+    !unconditional_jump(From),
+    !halt(From),
+    !no_return_call(From).

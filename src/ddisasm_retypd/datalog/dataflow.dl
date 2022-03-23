@@ -1,3 +1,11 @@
+// Generate pairs of instructions that have local edges to each other
+.decl local_next(source: address, dest: address)
+local_next(EA, EA_next) :-
+    code_in_refined_block(EA, Block),
+    may_fallthrough(EA,EA_next),
+    code_in_refined_block(EA_next,Block).
+
+
 // Utility relation to determine whether or not an instructions destination is
 // eventually dereferenced
 .decl register_derefenced(ea:address)

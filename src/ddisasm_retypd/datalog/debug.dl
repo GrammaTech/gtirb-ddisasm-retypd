@@ -1,6 +1,6 @@
 .decl debug_ea_no_subtype(ea:address, func:symbol, opcode:symbol)
 debug_ea_no_subtype(EA, Func, Opcode) :-
-    code_in_block(EA, Block),
+    code_in_refined_block(EA, Block),
     !arch.jump(EA),
     !arch.return(EA),
     instruction_get_operation(EA, Opcode),

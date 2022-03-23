@@ -5,6 +5,8 @@ import logging
 import tempfile
 
 from ddisasm_retypd.ddisasm import (
+    extract_arch_relations,
+    extract_cfg_relations,
     extract_souffle_relations,
     get_arch_sizes,
     get_callgraph,
@@ -45,6 +47,9 @@ class DdisasmRetypd:
         :param debug_dir: Optional directory to dump output information to
         """
         extract_souffle_relations(self.ir, facts_dir)
+        extract_cfg_relations(self.ir, facts_dir)
+        extract_arch_relations(self.ir, facts_dir)
+
         logging.info("Executing souffle")
         self._souffle_out = execute_souffle(
             facts_dir,

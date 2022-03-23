@@ -1,9 +1,11 @@
+import csv
 import gtirb
+import itertools
 import logging
 
 from gtirb_functions import Function
 from pathlib import Path
-from typing import Dict, Set, Tuple
+from typing import Dict, Iterable, Set, Tuple
 
 
 def filter_name(function: Function) -> str:
@@ -93,3 +95,97 @@ def extract_souffle_relations(ir: gtirb.IR, directory: Path):
         header, text = data
         logging.debug(f"Writing {name} of {header}")
         (directory / f"{name}.facts").write_text(text)
+
+
+def pairwise(iterable: Iterable) -> Iterable:
+    """ Generate a stream of pairwise objects
+        s -> (s0,s1), (s1,s2), (s2, s3), ...
+    :param iterable: Iterable to generate pairs of
+    :returns: Stream of pairs of objects
+    """
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+csv.register_dialect("souffle", delimiter="\t", quoting=csv.QUOTE_NONE)
+
+
+def extract_cfg_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts from the CFG in the current GTIRB IR
+    :param ir: IR that is being loaded
+    :param directory: Directory to output facts to
+    """
+    for module in ir.modules:
+        if not any(module.code_blocks):
+            return
+
+        blocks = []
+        next_blocks = []
+
+        for (prev_block, block) in pairwise(module.code_blocks):
+            blocks.append((block.address, block.size))
+
+            if prev_block.address < block.address:
+                next_blocks.append((prev_block.address, block.address))
+
+    edges = []
+    top_edges = []
+    symbol_edges = []
+
+    for edge in ir.cfg:
+        if isinstance(edge.source, gtirb.CodeBlock):
+            conditional = str(edge.label.conditional).lower()
+            indirect = str(not edge.label.direct).lower()
+            label_type = edge.label.type.name.lower()
+
+            if isinstance(edge.target, gtirb.CodeBlock):
+                edges.append(
+                    (
+                        edge.source.address,
+                        edge.target.address,
+                        conditional,
+                        indirect,
+                        label_type,
+                    )
+                )
+            elif isinstance(edge.target, gtirb.ProxyBlock):
+                if any(edge.target.references):
+                    symbol = next(edge.target.references)
+
+                    symbol_edges.append(
+                        (
+                            edge.source.address,
+                            symbol.name,
+                            conditional,
+                            indirect,
+                            label_type,
+                        )
+                    )
+                else:
+                    top_edges.append(
+                        (
+                            edge.source.address,
+                            conditional,
+                            indirect,
+                            label_type,
+                        )
+                    )
+
+    with open(directory / "cfg_edge.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(edges)
+
+    with open(directory / "cfg_edge_to_top.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(top_edges)
+
+    with open(directory / "cfg_edge_to_symbol.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(symbol_edges)
+
+
+def extract_arch_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts from the architecture in the current GTIRB IR
+    :param ir: IR that is being loaded
+    :param directory: Directory to output facts to
+    """
+    pointer, _ = get_arch_sizes(ir)
+    (directory / "arch.pointer_size.facts").write_text(str(pointer))
