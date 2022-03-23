@@ -4,7 +4,12 @@ Utilize the [retypd](https://github.com/GrammaTech/retypd) algorithm to infer
 type information for binaries lifted to [GTIRB](https://github.com/GrammaTech/gtirb)
 with [ddisasm](https://github.com/GrammaTech/ddisasm). This relies on internal
 souffle facts and outputs derived in ddisasm that are encoded in the AuxData
-section of the GTIRB file.
+section of the GTIRB file. These facts are only saved to AuxData when ddisasm is
+run with the `--with-souffle-relations` flag, for example:
+
+```bash
+$ ddisasm ./sample-binary --ir ./sample-binary.gtirb --with-souffle-relations
+```
 
 ## Dependencies
 
