@@ -17,18 +17,18 @@ struct linkedlist* alloc_ll(int value);
  * #[O1] RBX_1886 ⊑ RBX_1916
  * #[O1] RBP_1889 ⊑ RBP_1898
  * #[O1] print_ll.in_0 ⊑ RDI_1886
- * #[O1] int ⊑ RDI_1901
+ * #[O1] RDI_1901 ⊑ int
  * #[O1] RBP_1898 ⊑ RSI_1898
- * #[O1] int ⊑ RDI_1925
+ * #[O1] RDI_1925 ⊑ int
  * #[O1] RBX_1886 ⊑ RBX_1896
  * #[O1] RBX_1916 ⊑ RBX_1896
  * #[O1] print_ll.in_0 ⊑ RDI_1881
  * #[O1] RBX_1896.load.σ4@0 ⊑ RDX_1896
- * #[O1] int ⊑ RAX_1906
- * #[O1] int ⊑ RSP_1935
+ * #[O1] RAX_1906 ⊑ int
+ * #[O1] RSP_1935 ⊑ int
  * #[O1] RDI_1886 ⊑ RBX_1886
  * #[O1] RBX_1916 ⊑ RBX_1920
- * #[O1] int ⊑ RSP_1877
+ * #[O1] RSP_1877 ⊑ int
  * #[O1] RSP_1877 ⊑ RSP_1935
  * #[O1] RBX_1916.load.σ8@8 ⊑ RBX_1916
  * #[O1] RAX_1906 ⊑ print_ll.out
@@ -38,22 +38,22 @@ struct linkedlist* alloc_ll(int value);
  *
  * #[O2] RBX_2057 ⊑ RBX_2061
  * #[O2] RBX_2030 ⊑ RBX_2040
- * #[O2] int ⊑ RSP_2033
+ * #[O2] RSP_2033 ⊑ int
  * #[O2] RBP_2044 ⊑ RSI_2044
  * #[O2] RBX_2040.load.σ4@0 ⊑ RDX_2040
- * #[O2] uint ⊑ RAX_2042
+ * #[O2] RAX_2042 ⊑ uint
  * #[O2] RBX_2057 ⊑ RBX_2040
  * #[O2] RBX_2030 ⊑ RBX_2057
- * #[O2] int ⊑ RDI_2070
+ * #[O2] RDI_2070 ⊑ int
  * #[O2] print_ll.in_0 ⊑ RDI_2016
  * #[O2] RBP_2023 ⊑ RBP_2044
- * #[O2] int ⊑ RSP_2066
- * #[O2] int ⊑ RDI_2047
+ * #[O2] RSP_2066 ⊑ int
+ * #[O2] RDI_2047 ⊑ int
  * #[O2] RSP_2033 ⊑ RSP_2066
  * #[O2] RDI_2030 ⊑ RBX_2030
  * #[O2] print_ll.in_0 ⊑ RDI_2030
  * #[O2] RBX_2057.load.σ8@8 ⊑ RBX_2057
- * #[O2] int ⊑ RDI_2088
+ * #[O2] RDI_2088 ⊑ int
  * #[O2] RAX_2042 ⊑ print_ll.out
  */
 /**
@@ -61,22 +61,22 @@ struct linkedlist* alloc_ll(int value);
  *
  * #[O3] RBX_2057 ⊑ RBX_2061
  * #[O3] RBX_2030 ⊑ RBX_2040
- * #[O3] int ⊑ RSP_2033
+ * #[O3] RSP_2033 ⊑ int
  * #[O3] RBP_2044 ⊑ RSI_2044
  * #[O3] RBX_2040.load.σ4@0 ⊑ RDX_2040
- * #[O3] uint ⊑ RAX_2042
+ * #[O3] RAX_2042 ⊑ uint
  * #[O3] RBX_2057 ⊑ RBX_2040
  * #[O3] RBX_2030 ⊑ RBX_2057
- * #[O3] int ⊑ RDI_2070
+ * #[O3] RDI_2070 ⊑ int
  * #[O3] print_ll.in_0 ⊑ RDI_2016
  * #[O3] RBP_2023 ⊑ RBP_2044
- * #[O3] int ⊑ RSP_2066
- * #[O3] int ⊑ RDI_2047
+ * #[O3] RSP_2066 ⊑ int
+ * #[O3] RDI_2047 ⊑ int
  * #[O3] RSP_2033 ⊑ RSP_2066
  * #[O3] RDI_2030 ⊑ RBX_2030
  * #[O3] print_ll.in_0 ⊑ RDI_2030
  * #[O3] RBX_2057.load.σ8@8 ⊑ RBX_2057
- * #[O3] int ⊑ RDI_2088
+ * #[O3] RDI_2088 ⊑ int
  * #[O3] RAX_2042 ⊑ print_ll.out
  */
 
@@ -199,9 +199,9 @@ void free_ll(struct linkedlist* ll);
  * #[O3] void ⊑ test_ll.out
  * #[O3] RDX_2167 ⊑ RDX_2188
  * #[O3] test_ll.in_0 ⊑ RDI_2160
- * #[O3] uint ⊑ RDX_2182
+ * #[O3] RDX_2182 ⊑ uint
  * #[O3] RAX_2172 ⊑ RAX_2184
- * #[O3] int ⊑ RDX_2167
+ * #[O3] RDX_2167 ⊑ int
  * #[O3] RDX_2188 ⊑ RDI_2188.store.σ4@0
  * #[O3] RDI_2160.load.σ4@0 ⊑ int
  */
