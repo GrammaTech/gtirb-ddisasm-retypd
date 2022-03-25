@@ -88,6 +88,14 @@ comment(EA, Comment, "def-use") :-
     Comment=cat("use(", Reg, " from ", to_string(EA_def), ")").
 
 comment(EA, Comment, "dataflow") :-
+    local_next(EA, EA_next),
+    Comment=cat("local_next(EA=", to_string(EA), ", EA_next=", to_string(EA_next), ")").
+
+comment(EA, Comment, "dataflow") :-
+    block_next(EA, EA_next),
+    Comment=cat("block_next(EA=", to_string(EA), ", EA_next=", to_string(EA_next), ")").
+
+comment(EA, Comment, "dataflow") :-
     next_instruction(EA, EA_next),
     Comment=cat("next_instruction(EA=", to_string(EA), ", EA_next=", to_string(EA_next), ")").
 

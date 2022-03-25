@@ -1,4 +1,4 @@
-// Determine whether there is a call at EA hat is a no-return
+// Determine whether there is a call at EA that is a no-return
 .decl no_return_call(EA:address)
 no_return_call(EA) :-
     cfg_edge(EA, _, _, _, "call"),
@@ -7,7 +7,9 @@ no_return_call(EA) :-
 // Generate pairs of blocks that have local edges to each other
 .decl block_next(source:address, dest:address)
 block_next(Source, Dest) :-
+    code_in_refined_block(Source, SourceBlock),
     cfg_edge(Source, Dest, _, _, Label),
+    arch.jump(Source),
     (
         Label="fallthrough"
         ;
