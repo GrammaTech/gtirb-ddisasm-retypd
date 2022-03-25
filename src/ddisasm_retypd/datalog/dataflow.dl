@@ -1,11 +1,10 @@
 // Generate pairs of instructions that have local edges to each other
 // TODO: This might be useful to upstream into ddisasm
-.decl local_next(source: address, dest: address)
+.decl local_next(EA_src:address, EA_dest:address)
 local_next(EA, EA_next) :-
     code_in_refined_block(EA, Block),
-    may_fallthrough(EA,EA_next),
-    code_in_refined_block(EA_next,Block).
-
+    may_fallthrough(EA, EA_next),
+    code_in_refined_block(EA_next, Block).
 
 // Utility relation to determine whether or not an instructions destination is
 // eventually dereferenced
@@ -22,7 +21,6 @@ register_derefenced(EA) :-
         op_regdirect_contains_reg(UsedSrcOp, Reg),
         register_derefenced(EA_used)
     ).
-
 
 // Determine if to addresses reach eachother locally without reaching another
 // compare operator.
@@ -116,6 +114,7 @@ typesink(EA, "SRC", Sink) :-
 .decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:number)
 
 memory_access(Mode, EA, Base, Offset, as(NBytes, number)) :-
+    code_in_refined_block(EA, _),
     (
         instruction_get_src_op(EA, _, IndOp),
         Mode = "load"
