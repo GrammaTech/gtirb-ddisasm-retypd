@@ -79,10 +79,6 @@ comment(EA, Comment, "arithmetic") :-
     arch.reg_arithmetic_operation(EA, Dst, Src, Mult, Offset),
     Comment=cat(Dst, " = ", Src, "*", to_string(Mult), " + ", to_string(Offset)).
 
-comment(EA, Comment, "arithmetic") :-
-    value_reg(EA,Reg1,EA2,Reg2,Mult,Immediate,_),
-    Comment=cat("value: ", to_string(EA), "_", Reg1, " = ", to_string(EA2), "_", Reg2, "*", to_string(Mult), " + ", to_string(Immediate)).
-
 comment(EA, Comment, "def-use") :-
     def_used(EA, Reg, _, _),
     Comment=cat("def(", Reg, ")").

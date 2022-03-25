@@ -132,10 +132,6 @@
 .decl op_indirect_contains_reg(op:operand_code,reg:register)
 .input op_indirect_contains_reg
 
-.decl value_reg(EA:address,Reg:register,
-                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
-.input value_reg
-
 //////////////////////////////////////////////////////////////////////////////
 // Relations directly using the same implementation from ddisasm, but we compute
 // them locally so as not to blow up the size of the output of ddisasm. This is
