@@ -74,6 +74,9 @@
     .decl arithmetic_operation(Operation:symbol)
     .input arithmetic_operation
 
+    .decl call_operation(Operation:symbol)
+    .input call_operation
+
     .decl logic_operation(Operation:symbol)
     .input logic_operation
 
