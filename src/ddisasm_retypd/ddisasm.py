@@ -1,11 +1,10 @@
 import csv
 import gtirb
-import itertools
 import logging
 
 from gtirb_functions import Function
 from pathlib import Path
-from typing import Dict, Iterable, Set, Tuple
+from typing import Dict, Set, Tuple
 
 
 def filter_name(function: Function) -> str:
@@ -97,38 +96,32 @@ def extract_souffle_relations(ir: gtirb.IR, directory: Path):
         (directory / f"{name}.facts").write_text(text)
 
 
-def pairwise(iterable: Iterable) -> Iterable:
-    """ Generate a stream of pairwise objects
-        s -> (s0,s1), (s1,s2), (s2, s3), ...
-    :param iterable: Iterable to generate pairs of
-    :returns: Stream of pairs of objects
-    """
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
 csv.register_dialect("souffle", delimiter="\t", quoting=csv.QUOTE_NONE)
 
 
-def extract_cfg_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts from the CFG in the current GTIRB IR
+def extract_block_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts about blocks in the CFG for a GTIRB IR
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
+    blocks = []
+
     for module in ir.modules:
         if not any(module.code_blocks):
             return
 
-        blocks = []
-        next_blocks = []
-
-        for (prev_block, block) in pairwise(module.code_blocks):
+        for block in module.code_blocks:
             blocks.append((block.address, block.size))
 
-            if prev_block.address < block.address:
-                next_blocks.append((prev_block.address, block.address))
+    with open(directory / "block.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(blocks)
 
+
+def extract_edge_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts about edges in the CFG for a GTIRB IR
+    :param ir: IR that is being loaded
+    :param directory: Directory to output facts to
+    """
     edges = []
     top_edges = []
     symbol_edges = []
@@ -180,6 +173,15 @@ def extract_cfg_relations(ir: gtirb.IR, directory: Path):
 
     with open(directory / "cfg_edge_to_symbol.facts", "w") as f:
         csv.writer(f, "souffle").writerows(symbol_edges)
+
+
+def extract_cfg_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts from the CFG in the current GTIRB IR
+    :param ir: IR that is being loaded
+    :param directory: Directory to output facts to
+    """
+    extract_block_relations(ir, directory)
+    extract_edge_relations(ir, directory)
 
 
 def extract_arch_relations(ir: gtirb.IR, directory: Path):
