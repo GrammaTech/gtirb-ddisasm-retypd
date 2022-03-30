@@ -10,6 +10,7 @@ local_next(EA, EA_next) :-
 // eventually dereferenced
 .decl register_derefenced(ea:address)
 register_derefenced(EA) :-
+    code_in_refined_block(EA, _),
     instruction_get_dest_op(EA, _, DestOp),
     op_regdirect_contains_reg(DestOp, Reg),
     def_used(EA, Reg, EA_used, _),
