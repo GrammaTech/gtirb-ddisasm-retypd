@@ -41,10 +41,17 @@ compare_and_conditional(EA_cmp, EA_cond) :-
     arch.cmp_operation(CmpOperation),
     instruction_get_operation(EA_cmp, CmpOperation),
     local_reaches_without_compare(EA_cmp, EA_cond),
+    instruction_get_operation(EA_cond, CondOperation),
     (
         arch.jump(EA_cond)
         ;
         arch.conditional(EA_cond)
+        ;
+        signed_conditional_move(CondOperation)
+        ;
+        unsigned_conditional_move(CondOperation)
+        ;
+        signed_set_flag(CondOperation)
     ).
 
 .decl typesink(EA:address, side:symbol, sink:lattice_type)
@@ -106,6 +113,12 @@ typesink(EA, "SRC", Sink) :-
         ;
         unsigned_conditional_move(Op),
         Sink="uint"
+        ;
+        unsigned_set_flag(Op),
+        Sink="uint"
+        ;
+        signed_set_flag(Op),
+        Sink="int"
     ),
     compare_and_conditional(EA, EA_cond).
 
