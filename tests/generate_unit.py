@@ -5,9 +5,186 @@ import gtirb
 import tempfile
 
 from collections import defaultdict
-from ddisasm_retypd.ddisasm_retypd import DdisasmRetypd
+from ddisasm_retypd import DdisasmRetypd
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
+
+
+class UnitTestGenerator:
+    """Use SEL's asts module to augment header files with their generated
+       constraints for unit testing
+    """
+
+    def __init__(self, source_dir: Path, gtirb_files: List[Path]):
+        self.gtirb_files = gtirb_files
+        self.gtirb_headers = {
+            gtirb_file: (
+                source_dir / f'{gtirb_file.name.rsplit("-", maxsplit=1)[0]}.h'
+            )
+            for gtirb_file in gtirb_files
+        }
+        self.comments = defaultdict(dict)
+
+    def _generate_comments(self, gtirb_file: Path):
+        """ Generate constraint comment for the functions in a given GTIRB
+        :param gtirb_file: Path to the GTIRB file whose comments should be
+            created
+        """
+        opt = gtirb_file.stem.rsplit("-", maxsplit=1)[1]
+
+        with tempfile.TemporaryDirectory() as td_:
+            td = Path(td_)
+            ir = gtirb.IR.load_protobuf(str(gtirb_file))
+            dr = DdisasmRetypd(ir, td)
+            dr._exec_souffle(td, td)
+
+            constraint_map = dr._insert_subtypes()
+
+        for dtv, derived_constraint in constraint_map.items():
+            comment = "\n/**\n"
+            comment += f" * Generated constraints for {dtv} at -{opt}\n"
+            comment += " *\n"
+
+            # Sorting the constraints by string isn't a perfect solution, but
+            # the most important functionality is to get meaningful diffs, so
+            # this is a quick way to do so.
+            constraints = sorted(
+                [str(constraint) for constraint in derived_constraint.subtype]
+            )
+
+            for constraint in constraints:
+                comment += f" * #[{opt}] {constraint}\n"
+            comment += " */"
+            self.comments[str(dtv)][opt] = comment
+
+    def generate_all_comments(self):
+        for gtirb_file in self.gtirb_files:
+            self._generate_comments(gtirb_file)
+
+    def _find_source_line(self, root: asts.AST, child: asts.AST) -> int:
+        """ Find which line of source a given child of an AST starts at
+        :param """
+        for (range_child, ranges) in root.ast_source_ranges():
+            if child == range_child:
+                return min(ranges, key=lambda x: x[0])[0]
+
+        raise ValueError(f"Failed to find source range for {child}")
+
+    def _parse_comment(self, comment: str) -> Optional[Tuple[str, str]]:
+        """ Parse whether if a comment contains generated constraints, the name
+            and version of the function that was encoded in that function
+        :param comment: String of the comment being parsed
+        :returns: (name, version) tuple if available, otherwise None
+        """
+        generated = re.findall(
+            r"Generated constraints for (.*) at -(O\d)", comment,
+        )
+        return generated[0] if len(generated) > 0 else None
+
+    def _transform_existing_comments(
+        self, ast: asts.AST
+    ) -> Optional[asts.LiteralOrAST]:
+        """ Transform comments that already exist in the AST to the new lines
+        :param ast: AST to transform
+        :returns: If this is a generated comment, the updated form
+        """
+        if isinstance(ast, asts.CComment):
+            text = ast.source_text
+            generated = self._parse_comment(text)
+
+            if generated:
+                name, version = generated
+
+                if name in self.comments and version in self.comments[name]:
+                    comment = self.comments[name][version]
+                    del self.comments[name][version]
+
+                    return asts.AST.from_string(
+                        comment, asts.ASTLanguage.C, deepest=True,
+                    )
+
+    def _insert_new_comment(
+        self, ast: asts.AST, name: str, version: str
+    ) -> asts.AST:
+        """ Insert a new comment for a given tuple
+        :param ast: Root AST to insert into
+        :param name: Name of the function to insert for
+        :param version: Version of the function to insert
+        :returns: Updated AST
+        """
+        for child in ast.children:
+            if not isinstance(child, asts.CDeclaration):
+                continue
+
+            name_ast = child.child_slot("DECLARATOR")[0].child_slot(
+                "DECLARATOR"
+            )
+
+            while isinstance(
+                name_ast, (asts.CPointerDeclarator, asts.CFunctionDeclarator0),
+            ):
+                name_ast = child.child_slot("TYPE")
+
+            if isinstance(name_ast, asts.CStructSpecifier):
+                continue
+
+            assert isinstance(name_ast, asts.CIdentifier), (
+                f"Failed to derive identifier for {name_ast}: "
+                f"{name_ast.source_text}"
+            )
+
+            child_name = name_ast.source_text
+
+            if child_name != name:
+                continue
+
+            comment = self.comments[name][version]
+            del self.comments[name][version]
+
+            children_line = self._find_source_line(ast, child)
+            new_ast = asts.AST.from_string(
+                comment, asts.ASTLanguage.C, deepest=True,
+            )
+
+            assert isinstance(new_ast, asts.CComment)
+            insert_point = ast.ast_at_point(children_line - 1, 1)
+            ast = asts.AST.insert(ast, insert_point, new_ast)
+
+        return ast
+
+    def _insert_remaining_comments(self, ast: asts.AST) -> asts.AST:
+        """ Insert comments that weren't used as updates of older comments into
+            the root of the AST before the function declarations
+        :param ast: Root AST to insert into
+        :returns: The modified root AST
+        """
+        for name, opts in self.comments.items():
+            for opt in list(opts.keys()):
+                ast = self._insert_new_comment(ast, name, opt)
+
+        return ast
+
+    def _transform_header(self, header_file: Path, output_file: Path):
+        """ Run the transformation pipeline on a header file, and write the
+            resultant AST back to another file
+        :param header_file: Source header file
+        :param output_file: Target header file
+        """
+        header = asts.AST.from_string(
+            header_file.read_text(), asts.ASTLanguage.C
+        )
+
+        header = asts.AST.transform(header, self._transform_existing_comments)
+        header = self._insert_remaining_comments(header)
+        output_file.write_text(header.source_text)
+
+    def transform_all(self, output_dir: Path):
+        """ Transform all loaded header files into an output directory
+        :param output_dir: Directory to write resultant header files
+        """
+        for header_file in self.gtirb_headers.values():
+            output_file = output_dir / header_file.name
+            self._transform_header(header_file, output_file)
 
 
 def main():
@@ -28,117 +205,9 @@ def main():
     gtirb_dir = args.workdir / "gtirb"
     gtirbs = list(gtirb_dir.glob("*.gtirb"))
 
-    gtirb_headers = {
-        gtirb_file: (
-            source_dir / f'{gtirb_file.name.rsplit("-", maxsplit=1)[0]}.h'
-        )
-        for gtirb_file in gtirbs
-    }
-
-    comments = defaultdict(dict)
-
-    for gtirb_file in gtirbs:
-        opt = gtirb_file.stem.rsplit("-", maxsplit=1)[1]
-
-        with tempfile.TemporaryDirectory() as td:
-            ir = gtirb.IR.load_protobuf(str(gtirb_file))
-            dr = DdisasmRetypd(ir, Path(td))
-            dr._exec_souffle(dr.facts_dir, Path(td))
-
-            constraint_map = dr._insert_subtypes()
-
-        for dtv, derived_constraint in constraint_map.items():
-            comment = "\n/**\n"
-            comment += f" * Generated constraints for {dtv} at -{opt}\n"
-            comment += " *\n"
-            for constraint in derived_constraint.subtype:
-                comment += f" * #[{opt}] {constraint}\n"
-            comment += " */"
-            comments[str(dtv)][opt] = comment
-
-    def insert_decl_comments(ast: asts.AST) -> Optional[asts.LiteralOrAST]:
-        if isinstance(ast, asts.RootAST):
-            for child in ast.children:
-                children_line = None
-
-                for (range_child, ranges) in ast.ast_source_ranges():
-                    if child == range_child:
-                        children_line = min(ranges, key=lambda x: x[0])[0]
-                        break
-                else:
-                    print(f"Failed to find source range for {child}")
-                    continue
-
-                if not isinstance(child, asts.CDeclaration):
-                    continue
-
-                name_ast = child.children[1].children[0]
-
-                while isinstance(
-                    name_ast,
-                    (asts.CPointerDeclarator, asts.CFunctionDeclarator0),
-                ):
-                    name_ast = child.children[0]
-
-                if isinstance(name_ast, asts.CStructSpecifier):
-                    continue
-
-                assert isinstance(name_ast, asts.CIdentifier), (
-                    f"Failed to derive identifier for {name_ast}: "
-                    f"{name_ast.source_text}"
-                )
-                name = name_ast.source_text
-
-                if name not in comments:
-                    continue
-
-                prev_comments = {}
-
-                for prev_child in ast.children:
-                    if isinstance(prev_child, asts.CComment):
-                        prev_comment = prev_child.source_text
-                        prev_gen = re.findall(
-                            r"Generated constraints for (.*) at -(O\d)",
-                            prev_comment,
-                        )
-
-                        if len(prev_gen) > 0:
-                            prev_func, prev_opt = prev_gen[0]
-
-                            if prev_func == name:
-                                prev_comments[prev_opt] = prev_child
-                    elif isinstance(prev_child, asts.CEmptyStatement):
-                        continue
-                    else:
-                        break
-
-                opts = sorted(comments[name].items(), key=lambda x: x[0])[::-1]
-
-                for opt, comment in opts:
-                    new_ast = asts.AST.from_string(
-                        comment, asts.ASTLanguage.C, deepest=True,
-                    )
-                    assert isinstance(new_ast, asts.CComment)
-
-                    if opt in prev_comments:
-                        replace_point = prev_comments[opt]
-                        asts.AST.replace(ast, replace_point, new_ast)
-                    else:
-                        insert_point = ast.ast_at_point(children_line - 1, 1)
-
-                        ast = asts.AST.insert(ast, insert_point, new_ast)
-
-            return ast
-
-    headers = set(gtirb_headers.values())
-
-    for header_file in headers:
-        header = asts.AST.from_string(
-            header_file.read_text(), asts.ASTLanguage.C
-        )
-
-        header_new = asts.AST.transform(header, insert_decl_comments)
-        (args.output / header_file.name).write_text(header_new.source_text)
+    gen = UnitTestGenerator(source_dir, gtirbs)
+    gen.generate_all_comments()
+    gen.transform_all(args.output)
 
 
 if __name__ == "__main__":
