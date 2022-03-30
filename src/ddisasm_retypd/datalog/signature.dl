@@ -13,9 +13,10 @@ reaches_without_write(EA, Reg) :-
         arch.stack_pointer(Reg)
     ),
     (
-        instruction_get_dest_op(EA, _, Op2),
-        !op_regdirect_contains_reg(Op2, Reg),
-        !op_regdirect(Op2, Reg)
+        !explicit_writes_register(EA, Reg)
+        ;
+        explicit_writes_register(EA, Reg),
+        explicit_reads_register(EA, Reg)
         ;
         !instruction_get_dest_op(EA, _, _)
     ),
@@ -55,18 +56,7 @@ writes_argument_before_call(Caller, EA_def, Reg, Callee, Index) :-
 .decl reads_unwritten_argument(func:symbol, ea_def:address, reg:register, index:unsigned)
 .output reads_unwritten_argument
 reads_unwritten_argument(Func, EA_use, Reg, Index) :-
-    (
-        instruction_get_src_op(EA_use, _, SrcOp),
-        op_regdirect_contains_reg(SrcOp, Reg)
-        ;
-        (
-            instruction_get_src_op(EA_use, _, SrcOp)
-            ;
-            instruction_get_dest_op(EA_use, _, SrcOp)
-        ),
-        op_indirect_contains_reg(SrcOp, Reg)
-    ),
-
+    explicit_reads_register(EA_use, Reg),
     reaches_without_write(EA_use, Reg),
     param_register(_, Reg, Index),
 
@@ -147,10 +137,8 @@ write_implicit_return_value(Func, ReturnedFunc, EA_ret, EA_use) :-
 .decl writes_unread_return_value(func:symbol, def_ea:address)
 .output writes_unread_return_value
 writes_unread_return_value(Func, EA_def) :-
-    instruction_get_dest_op(EA_def, _, RegOp),
-    op_regdirect_contains_reg(RegOp, Reg),
-    !op_register_bitfield(RegOp, Reg),
     return_register(_, Reg),
+    explicit_writes_register(EA_def, Reg),
     !def_used(EA_def, _, _, _),
 
     code_in_refined_block(EA_def, Block),
