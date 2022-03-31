@@ -16,29 +16,14 @@
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
-.decl op_regdirect_contains_reg(op:operand_code, reg:register)
-.input op_regdirect_contains_reg
-
-.decl op_register_bitfield(code:operand_code, register_name:register)
-.input op_register_bitfield
-
 .decl op_immediate(code:operand_code, offset:number)
 .input op_immediate
 
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
 
-.decl code_in_refined_block(ea:address, block:address)
-.input code_in_refined_block
-
 .decl function_symbol(ea:address, name:symbol)
 .input function_symbol
-
-.decl def_used(ea_def:address, reg:register, ea_used:address, index_used:operand_index)
-.input def_used
-
-.decl cfg_edge(src:address, dest:address, conditional:symbol, indirect:symbol, type:symbol)
-.input cfg_edge
 
 .decl reg_call(src:address, reg:register)
 .input reg_call
@@ -91,9 +76,6 @@
 
     .decl return(src:address)
     .input return
-
-    .decl track_register(reg1:register,reg2:register)
-    .input track_register
 
     .decl move_operation(Operation:symbol)
     .input move_operation

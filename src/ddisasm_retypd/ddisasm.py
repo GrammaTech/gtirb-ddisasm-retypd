@@ -2,6 +2,7 @@ import csv
 import gtirb
 import logging
 
+from gtirb_capstone.instructions import GtirbInstructionDecoder
 from gtirb_functions import Function
 from pathlib import Path
 from typing import Dict, Set, Tuple
@@ -99,6 +100,45 @@ def extract_souffle_relations(ir: gtirb.IR, directory: Path):
 csv.register_dialect("souffle", delimiter="\t", quoting=csv.QUOTE_NONE)
 
 
+def extract_instruction_relations(ir: gtirb.IR, directory: Path):
+    """ Write souffle facts about instruction in the CFG for a GTIRB IR
+    :param ir: IR that is being loaded
+    :param directory: Directory to output facts to
+    """
+    block_instruction = []
+    instruction_read_access = []
+    instruction_write_access = []
+
+    for module in ir.modules:
+        decoder = GtirbInstructionDecoder(module.isa)
+
+        for block in module.code_blocks:
+            for instr in decoder.get_instructions(block):
+                block_instruction.append((instr.address, block.address))
+                regs_read, regs_write = instr.regs_access()
+
+                # Unfortunately our register indices aren't lining up with the
+                # ones that ddisasm is producing, so we generate this
+                # constraint by register name
+                instruction_read_access += [
+                    (instr.address, instr.reg_name(reg_read).upper())
+                    for reg_read in regs_read
+                ]
+                instruction_write_access += [
+                    (instr.address, instr.reg_name(reg_write).upper())
+                    for reg_write in regs_write
+                ]
+
+    with open(directory / "block_instruction.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(block_instruction)
+
+    with open(directory / "instruction_read_access.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(instruction_read_access)
+
+    with open(directory / "instruction_write_access.facts", "w") as f:
+        csv.writer(f, "souffle").writerows(instruction_write_access)
+
+
 def extract_block_relations(ir: gtirb.IR, directory: Path):
     """ Write souffle facts about blocks in the CFG for a GTIRB IR
     :param ir: IR that is being loaded
@@ -180,6 +220,7 @@ def extract_cfg_relations(ir: gtirb.IR, directory: Path):
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
+    extract_instruction_relations(ir, directory)
     extract_block_relations(ir, directory)
     extract_edge_relations(ir, directory)
 

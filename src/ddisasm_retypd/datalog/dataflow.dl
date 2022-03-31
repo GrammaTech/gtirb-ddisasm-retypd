@@ -1,76 +1,68 @@
+.decl block_instruction(EA:address, Block:address)
+.input block_instruction
+
+.decl instruction_read_access(EA:address, reg:register)
+.input instruction_read_access
+
+.decl instruction_write_access(EA:address, reg:register)
+.input instruction_write_access
+
+.decl explicit_writes_register(ea:address, reg:register)
+explicit_writes_register(EA, Reg) :-
+    block_instruction(EA, _),
+    instruction_get_dest_op(EA, _, Op),
+    op_regdirect(Op, TrackedReg),
+    track_register(TrackedReg, Reg).
+
+.decl explicit_reads_register(ea:address, reg:register)
+explicit_reads_register(EA, Reg) :-
+    block_instruction(EA, _),
+    instruction_get_src_op(EA, _, Op),
+    (
+        op_regdirect(Op, TrackedRegister)
+        ;
+        op_indirect(Op, _, TrackedRegister, _, _, _, _)
+        ;
+        op_indirect(Op, _, _, TrackedRegister, _, _, _)
+    ),
+    track_register(TrackedRegister, Reg).
+
+.decl register_access(EA:address, mode:symbol, reg:register)
+register_access(EA, Mode, Reg) :-
+    (
+        instruction_read_access(EA, RawReg),
+        Mode="Reads"
+        ;
+        instruction_write_access(EA, RawReg),
+        Mode="Writes"
+    ),
+    track_register(RawReg, Reg).
+
+
 // Generate pairs of instructions that have local edges to each other
 // TODO: This might be useful to upstream into ddisasm
 .decl local_next(EA_src:address, EA_dest:address)
 local_next(EA, EA_next) :-
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     may_fallthrough(EA, EA_next),
-    code_in_refined_block(EA_next, Block).
+    block_instruction(EA_next, Block).
 
 // Utility relation to determine whether or not an instructions destination is
 // eventually dereferenced
 .decl register_derefenced(ea:address)
 register_derefenced(EA) :-
-    code_in_refined_block(EA, _),
-    instruction_get_dest_op(EA, _, DestOp),
-    op_regdirect_contains_reg(DestOp, Reg),
-    def_used(EA, Reg, EA_used, _),
+    block_instruction(EA, _),
+    explicit_writes_register(EA, Reg),
+    reg_def_use.def_use(EA, Reg, EA_used),
     (
         data_access(EA_used, _, _, Reg, _, _, _, _)
         ;
         !data_access(EA_used, _, _, Reg, _, _, _, _),
         instruction_get_src_op(EA_used, _, UsedSrcOp),
-        op_regdirect_contains_reg(UsedSrcOp, Reg),
+        op_regdirect(UsedSrcOp, TrackedReg),
+        track_register(TrackedReg, Reg),
         register_derefenced(EA_used)
     ).
-
-.decl explicit_writes_register(ea:address, reg:register)
-explicit_writes_register(EA, Reg) :-
-    code_in_refined_block(EA, _),
-    (
-        op_regdirect_contains_reg(_, Reg)
-        ;
-        arch.stack_pointer(Reg)
-    ),
-    instruction_get_dest_op(EA, _, Op),
-    (
-        op_regdirect_contains_reg(Op, Reg)
-        ;
-        !op_regdirect_contains_reg(Op, Reg),
-        op_regdirect(Op, Reg)
-    ).
-
-.decl explicit_reads_register(ea:address, reg:register)
-explicit_reads_register(EA, Reg) :-
-    code_in_refined_block(EA, _),
-    (
-        op_regdirect_contains_reg(_, Reg)
-        ;
-        arch.stack_pointer(Reg)
-    ),
-    instruction_get_src_op(EA, _, Op),
-    (
-        op_regdirect_contains_reg(Op, Reg)
-        ;
-        !op_regdirect_contains_reg(Op, Reg),
-        op_regdirect(Op, Reg)
-        ;
-        op_indirect_contains_reg(Op, Reg)
-        ;
-        !op_indirect_contains_reg(Op, Reg),
-        op_indirect(Op, _, Reg, _, _, _, _)
-    ).
-
-
-// Determine if to addresses reach eachother locally without reaching another
-// compare operator.
-.decl local_reaches_without_compare(EA_from:address, EA_to:address)
-local_reaches_without_compare(EA_from, EA_to) :-
-    local_next(EA_from, EA_to)
-    ;
-    local_next(EA_from, EA_mid),
-    instruction_get_operation(EA_mid, Op),
-    !arch.cmp_operation(Op),
-    local_reaches_without_compare(EA_mid, EA_to).
 
 // Determine pairs of instructions that compare two numbers and then jump or a
 // conditional move based on the set flags.
@@ -79,12 +71,15 @@ local_reaches_without_compare(EA_from, EA_to) :-
 compare_and_conditional(EA_cmp, EA_cond) :-
     arch.cmp_operation(CmpOperation),
     instruction_get_operation(EA_cmp, CmpOperation),
-    local_reaches_without_compare(EA_cmp, EA_cond),
+    condition_register(Reg),
+    reg_def_use.def_use(EA_cmp, Reg, EA_cond),
     instruction_get_operation(EA_cond, CondOperation),
     (
-        arch.jump(EA_cond)
+        arch.jump(EA_cond),
+        CondOperation=CondOperation
         ;
-        arch.conditional(EA_cond)
+        arch.conditional(EA_cond),
+        CondOperation=CondOperation
         ;
         signed_conditional_move(CondOperation)
         ;
@@ -103,27 +98,19 @@ typesink(EA, "DEST", Sink) :-
     typesink_operation(Op, Sink),
     !register_derefenced(EA).
 
-// Set a type sink for a register that reads from an integer. Its probably
-// safer to set the to be a uint in the type lattice?
+// Set a type sink for a register that reads from an integer. For now we assume
+// that this is a signed integer, until proven otherwise.
 typesink(EA, "DEST", "int") :-
     instruction_get_operation(EA, Operation),
     !arch.read_only_operation(Operation),
 
-    // Src
-    instruction_get_operation(EA, Operation),
-    instruction_get_op(EA, Imm_index, Op),
+    // Source numeral thats not a symbolic
+    instruction_get_src_op(EA, Imm_index, Op),
     op_immediate(Op, _),
     !symbolic_operand(EA, Imm_index, _, _),
 
-    // Dest
-    instruction_get_dest_op(EA, _, DestOp),
-    (
-        op_regdirect_contains_reg(DestOp, Reg),
-        !op_register_bitfield(DestOp, Reg),
-        !arch.pc_register(Reg)
-        ;
-        !op_regdirect_contains_reg(DestOp, _)
-    ).
+    // Destination register
+    register_access(EA, "Writes", _).
 
 // Set a type sink for sign and zero extension instructions
 typesink(EA, "DEST", "int") :-
@@ -166,7 +153,7 @@ typesink(EA, "SRC", Sink) :-
 .decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:number)
 
 memory_access(Mode, EA, Base, Offset, as(NBytes, number)) :-
-    code_in_refined_block(EA, _),
+    block_instruction(EA, _),
     (
         instruction_get_src_op(EA, _, IndOp),
         Mode = "load"

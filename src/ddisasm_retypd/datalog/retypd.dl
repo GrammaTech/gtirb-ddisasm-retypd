@@ -5,6 +5,7 @@
 #include "callingconv.dl"
 #include "callgraph.dl"
 #include "dataflow.dl"
+#include "def_use.dl"
 #include "signature.dl"
 #include "stack_tracker.dl"
 #include "subtypes.dl"

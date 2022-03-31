@@ -8,21 +8,17 @@ subtype_reg(Func, EA, Reg_src, Reg_dest) :-
     !arch.read_only_operation(Operation),
 
     // Src
-    instruction_get_src_op(EA, _, SrcOp),
-    op_regdirect_contains_reg(SrcOp, Reg_src),
-    !op_register_bitfield(SrcOp, Reg_src),
+    register_access(EA, "Reads", Reg_src),
     !arch.pc_register(Reg_src),
 
     // Dest
-    instruction_get_dest_op(EA, _, DestOp),
-    op_regdirect_contains_reg(DestOp, Reg_dest),
-    !op_register_bitfield(DestOp, Reg_dest),
+    register_access(EA, "Writes", Reg_dest),
     !arch.pc_register(Reg_dest),
 
     Reg_dest != Reg_src,
 
     // Find Func
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -32,10 +28,11 @@ subtype_reg(Func, EA, Reg_src, Reg_dest) :-
 //   EA_used: add yyy, Reg
 .decl subtype_def_use(func:symbol, ea1:address, reg1:register, ea2:address)
 subtype_def_use(Func, EA_def, Reg, EA_used):-
-    def_used(EA_def, Reg_untracked, EA_used, _),
+    reg_def_use.def_use(EA_def, Reg_untracked, EA_used),
     EA_def != EA_used,
-    arch.track_register(Reg_untracked, Reg),
-    code_in_refined_block(EA_def, Block),
+    track_register(Reg_untracked, Reg),
+
+    block_instruction(EA_def, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -44,19 +41,15 @@ subtype_def_use(Func, EA_def, Reg, EA_used):-
 subtype_reg_typesink(Func, EA, Reg, Sink) :-
     (
         typesink(EA, "DEST", Sink),
-        instruction_get_dest_op(EA, _, DestOp),
-        op_regdirect_contains_reg(DestOp, Reg),
-        !op_register_bitfield(DestOp, Reg)
+        explicit_writes_register(EA, Reg)
         ;
         typesink(EA, "SRC", Sink),
-        instruction_get_src_op(EA, _, SrcOp),
-        op_regdirect_contains_reg(SrcOp, Reg),
-        !op_register_bitfield(SrcOp, Reg),
+        explicit_reads_register(EA, Reg),
         !arch.pc_register(Reg)
     ),
 
     // Find Func
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -76,9 +69,10 @@ subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
         Mode = "store",
         instruction_get_src_op(EA, _, RegOp)
     ),
-    op_regdirect_contains_reg(RegOp, Reg),
+    op_regdirect(RegOp, TrackedReg),
+    track_register(TrackedReg, Reg),
 
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -94,7 +88,7 @@ subtype_mem_sink(Mode, Func, EA, Base, Offset, NBytes, Sink) :-
         Mode="store",
         typesink(EA, "DEST", Sink)
     ),
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -129,6 +123,6 @@ subtype_no_return_val(Func) :-
 .output subtype_called
 subtype_called(Func, EA, Reg) :-
     reg_call(EA, Reg),
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).

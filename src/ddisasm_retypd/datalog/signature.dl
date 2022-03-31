@@ -6,19 +6,13 @@
 // but there is *at least one* path where it is unwritten.
 .decl reaches_without_write(ea:address, reg:register)
 reaches_without_write(EA, Reg) :-
-    code_in_refined_block(EA, _),
+    block_instruction(EA, _),
+    track_register(_, Reg),
     (
-        op_regdirect_contains_reg(_, Reg)
+        !register_access(EA, "Writes", Reg)
         ;
-        arch.stack_pointer(Reg)
-    ),
-    (
-        !explicit_writes_register(EA, Reg)
-        ;
-        explicit_writes_register(EA, Reg),
-        explicit_reads_register(EA, Reg)
-        ;
-        !instruction_get_dest_op(EA, _, _)
+        register_access(EA, "Writes", Reg),
+        register_access(EA, "Reads", Reg)
     ),
     (
         next_instruction(PrevEA, EA),
@@ -37,13 +31,12 @@ reaches_without_write(EA, Reg) :-
 .output writes_argument_before_call
 writes_argument_before_call(Caller, EA_def, Reg, Callee, Index) :-
     // An register parameter is written to a call..
-    instruction_get_dest_op(EA_def, _, DefOp),
-    op_regdirect_contains_reg(DefOp, Reg),
+    register_access(EA_def, "Writes", Reg),
     param_register(_, Reg, Index),
-    !def_used(EA_def, Reg, _, _),
+    !reg_def_use.def_use(EA_def, Reg, _),
 
     // ... in function Caller ...
-    code_in_refined_block(EA_def, DefBlock),
+    block_instruction(EA_def, DefBlock),
     function_inference.in_function(DefBlock, Caller_addr),
     function_symbol(Caller_addr, Caller),
 
@@ -60,7 +53,7 @@ reads_unwritten_argument(Func, EA_use, Reg, Index) :-
     reaches_without_write(EA_use, Reg),
     param_register(_, Reg, Index),
 
-    code_in_refined_block(EA_use, UseBlock),
+    block_instruction(EA_use, UseBlock),
     function_inference.in_function(UseBlock, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -84,16 +77,16 @@ writes_implicit_argument(Writer, EA_def, Caller, Callee, EA_use, Index) :-
 .output writes_read_return_value
 writes_read_return_value(Func, EA_def, EA_use) :-
     // A return value is written...
-    def_used(EA_def, Reg, EA_use, _),
+    reg_def_use.def_use(EA_def, Reg, EA_use),
     return_register(_, Reg),
 
     // ...defined in function Func...
-    code_in_refined_block(EA_def, DefBlock),
+    block_instruction(EA_def, DefBlock),
     function_inference.in_function(DefBlock, Func_addr),
     function_symbol(Func_addr, Func),
 
     // ...used in function UseFunc...
-    code_in_refined_block(EA_use, UseBlock),
+    block_instruction(EA_use, UseBlock),
     function_inference.in_function(UseBlock, UseFunc_addr),
 
     // ...which are different functions.
@@ -127,7 +120,7 @@ write_implicit_return_value(Func, ReturnedFunc, EA_ret, EA_use) :-
 
     // .. and is called by another function who has a use of the register that
     // is returned in EA_ret by ReturnedFunc.
-    code_in_refined_block(EA_use, UseBlock),
+    block_instruction(EA_use, UseBlock),
     function_inference.in_function(UseBlock, UseFunc_addr),
     function_symbol(UseFunc_addr, CalleeFunc),
     call_reaches_with(CalleeFunc, Func, ReturnedFunc).
@@ -139,9 +132,9 @@ write_implicit_return_value(Func, ReturnedFunc, EA_ret, EA_use) :-
 writes_unread_return_value(Func, EA_def) :-
     return_register(_, Reg),
     explicit_writes_register(EA_def, Reg),
-    !def_used(EA_def, _, _, _),
+    !reg_def_use.def_use(EA_def, _, _),
 
-    code_in_refined_block(EA_def, Block),
+    block_instruction(EA_def, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
@@ -163,7 +156,7 @@ writes_return_value(Func, EA_def) :-
 .output reads_implicit_return_value
 reads_implicit_return_value(UseFunc, DefFunc, EA_use) :-
     write_implicit_return_value(DefFunc, _, _, EA_use),
-    code_in_refined_block(EA_use, Block),
+    block_instruction(EA_use, Block),
     function_inference.in_function(Block, UseFunc_addr),
     function_symbol(UseFunc_addr, UseFunc).
 
@@ -173,7 +166,7 @@ reads_implicit_return_value(UseFunc, DefFunc, EA_use) :-
 .output reads_direct_return
 reads_direct_return(UseFunc, DefFunc, EA_use) :-
     writes_read_return_value(DefFunc, _, EA_use),
-    code_in_refined_block(EA_use, Block),
+    block_instruction(EA_use, Block),
     function_inference.in_function(Block, UseFunc_addr),
     function_symbol(UseFunc_addr, UseFunc).
 

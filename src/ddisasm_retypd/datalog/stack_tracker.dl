@@ -78,8 +78,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     !push(EA),
 
     // ... and we compute Reg from SrcReg...
-    instruction_get_dest_op(EA, _, DestOp),
-    op_regdirect_contains_reg(DestOp, Reg),
+    explicit_writes_register(EA, Reg),
     (
         arch.reg_arithmetic_operation(EA, Reg, SrcReg, 1, Delta)
         ;
@@ -91,8 +90,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     (
         // ... and SrcReg is a stack reg from previous instruction ...
         HasPrev=1,
-        instruction_get_src_op(EA, _, SrcOp),
-        op_regdirect_contains_reg(SrcOp, SrcReg),
+        register_access(EA, "Reads", SrcReg),
         stack_pointer_tracking(PrevEA, SrcReg, PrevDepth)
         ;
         // ... and SrcReg is the implicitly passed stack pointer ...
@@ -118,24 +116,22 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     ),
     (
         // ... and if we don't write at all ...
-        !instruction_get_dest_op(EA, _, _)
+        !register_access(EA, "Writes", _)
         ;
         // ... and if we do write...
-        instruction_get_dest_op(EA, _, DestOp),
+        register_access(EA, "Writes", Reg),
         (
             // ... to something thats not frame/stack ...
             HasPrev = 1,
-            stack_pointer_tracking(PrevEA, Reg, Depth),
-            !op_regdirect_contains_reg(DestOp, Reg)
+            stack_pointer_tracking(PrevEA, PrevReg, Depth),
+            PrevReg != Reg
             ;
             // ... to something thats not the default initialized stack ...
             HasPrev = 0,
-            (
-                arch.frame_pointer(Reg)
-                ;
-                arch.stack_pointer(Reg)
-            ),
-            !op_regdirect_contains_reg(DestOp, Reg)
+            arch.frame_pointer(FrameReg),
+            Reg != FrameReg,
+            arch.stack_pointer(StackReg),
+            Reg != StackReg
         )
     ),
     (

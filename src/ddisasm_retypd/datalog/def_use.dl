@@ -1,0 +1,35 @@
+.comp AbstractDefUse<T> {
+    .decl def(EA:address, Object:T) overridable
+    .decl use(EA:address, Object:T) overridable
+    .decl flows_to(EA_from:address, EA_to:address) overridable
+
+    .decl def_flows_to(EA_def:address, EA_flowed:address, Object:T)
+    def_flows_to(EA, EA, Object) :-
+        def(EA, Object).
+
+    def_flows_to(EA_from, EA_to, Object) :-
+        def_flows_to(_, EA_from, Object),
+        flows_to(EA_from, EA_to),
+        !def(EA_to, Object).
+
+    .decl def_use(EA_def:address, Object:T, EA_use:address)
+    def_use(EA_def, Object, EA_use) :-
+        def_flows_to(EA_def, EA_use, Object),
+        use(EA_use, Object).
+}
+
+.comp RegisterDefUse : AbstractDefUse<register> {
+    .override def
+    def(EA, Object) :-
+        register_access(EA, "Writes", Object).
+
+    .override use
+    use(EA, Object) :-
+        register_access(EA, "Reads", Object).
+
+    .override flows_to
+    flows_to(EA_from, EA_to) :-
+        next_instruction(EA_from, EA_to).
+}
+
+.init reg_def_use = RegisterDefUse

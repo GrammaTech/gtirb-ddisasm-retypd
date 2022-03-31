@@ -1,6 +1,6 @@
 .decl debug_ea_no_subtype(ea:address, func:symbol, opcode:symbol)
 debug_ea_no_subtype(EA, Func, Opcode) :-
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     !arch.jump(EA),
     !arch.return(EA),
     instruction_get_operation(EA, Opcode),
@@ -64,6 +64,18 @@ comment(EA, Comment, "params") :-
     Comment=cat("writes_return_value(Func=", Func, ", EA=", to_string(EA), ")").
 
 comment(EA, Comment, "params") :-
+    writes_read_return_value(Func, EA, EA_use),
+    Comment=cat("writes_read_return_value(Func=", Func, ", EA_def=", to_string(EA), ", EA_use=", to_string(EA_use), ")").
+
+comment(EA, Comment, "params") :-
+    write_implicit_return_value(Func, ReturnedFunc, EA, EA_use),
+    Comment=cat("write_implicit_return_value(Func=", Func, ", ReturnedFunc=", ReturnedFunc, ", EA_ret=", to_string(EA), ", EA_use=", to_string(EA_use), ")").
+
+comment(EA, Comment, "params") :-
+    writes_unread_return_value(Func, EA),
+    Comment=cat("writes_unread_return_value(Func=", Func, ", EA_def=", to_string(EA), ")").
+
+comment(EA, Comment, "params") :-
     reads_return_value(Caller, Callee, EA),
     Comment=cat("reads_return_value(Caller=", Caller, ", Callee=", Callee, ", EA_use=", to_string(EA)).
 
@@ -80,11 +92,11 @@ comment(EA, Comment, "arithmetic") :-
     Comment=cat(Dst, " = ", Src, "*", to_string(Mult), " + ", to_string(Offset)).
 
 comment(EA, Comment, "def-use") :-
-    def_used(EA, Reg, _, _),
+    reg_def_use.def_use(EA, Reg, _),
     Comment=cat("def(", Reg, ")").
 
 comment(EA, Comment, "def-use") :-
-    def_used(EA_def, Reg, EA, _),
+    reg_def_use.def_use(EA_def, Reg, EA),
     Comment=cat("use(", Reg, " from ", to_string(EA_def), ")").
 
 comment(EA, Comment, "dataflow") :-

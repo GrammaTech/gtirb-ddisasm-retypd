@@ -1,16 +1,20 @@
+// An edge in the call graph
+.decl cfg_edge(src:address, dest:address, conditional:symbol, indirect:symbol, type:symbol)
+.input cfg_edge
+
 // Determine whether there is a call at EA that is a no-return
 .decl no_return_call(EA:address)
 no_return_call(EA) :-
     arch.call_operation(Op),
     instruction_get_operation(EA, Op),
-    code_in_refined_block(EA, Block),
+    block_instruction(EA, Block),
     cfg_edge(Block, _, _, _, "call"),
     !cfg_edge(Block, _, _, _, "fallthrough").
 
 // Generate pairs of blocks that have local edges to each other
 .decl block_next(source:address, dest:address)
 block_next(Source, Dest) :-
-    code_in_refined_block(Source, SourceBlock),
+    block_instruction(Source, SourceBlock),
     cfg_edge(SourceBlock, Dest, _, _, Label),
     arch.jump(Source),
     (
