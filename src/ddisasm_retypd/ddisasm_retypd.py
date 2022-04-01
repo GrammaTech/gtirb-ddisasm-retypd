@@ -12,12 +12,12 @@ from ddisasm_retypd.ddisasm import (
     get_callgraph,
 )
 from ddisasm_retypd.souffle import execute_souffle
-from ddisasm_retypd.lattice import DdisasmLattice, DdisasmLatticeCTypes
 from ddisasm_retypd.gtirb import RetypdGtirbWriter
 
 from collections import defaultdict
 from pathlib import Path
 
+from retypd.clattice import CLattice, CLatticeCTypes
 from retypd.c_type_generator import CTypeGenerator
 from retypd.c_types import CType, FunctionType, PointerType, StructType
 from retypd.solver import Sketches
@@ -147,7 +147,7 @@ class DdisasmRetypd:
         constraint_map = self._insert_subtypes(
             debug_dir is not None, debug_categories
         )
-        program = Program(DdisasmLattice(), {}, constraint_map, self.callgraph)
+        program = Program(CLattice(), {}, constraint_map, self.callgraph)
 
         logging.info("Solving constraints")
         loglevel = LogLevel.DEBUG if debug_dir else LogLevel.QUIET
@@ -193,8 +193,8 @@ class DdisasmRetypd:
 
         gen = CTypeGenerator(
             sketches,
-            DdisasmLattice(),
-            DdisasmLatticeCTypes(),
+            CLattice(),
+            CLatticeCTypes(),
             reg_size,
             addr_size,
             verbose=LogLevel.DEBUG if debug_dir else LogLevel.QUIET,
