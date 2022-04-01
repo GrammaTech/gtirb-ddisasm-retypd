@@ -5,7 +5,7 @@
 
     .decl def_flows_to(EA_def:address, EA_flowed:address, Object:T)
     def_flows_to(EA_from, EA_to, Object) :-
-        def(EA, Object),
+        def(EA_from, Object),
         flows_to(EA_from, EA_to).
 
     def_flows_to(EA_from, EA_to, Object) :-
