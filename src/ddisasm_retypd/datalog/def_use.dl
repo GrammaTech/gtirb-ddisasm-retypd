@@ -4,11 +4,13 @@
     .decl flows_to(EA_from:address, EA_to:address) overridable
 
     .decl def_flows_to(EA_def:address, EA_flowed:address, Object:T)
-    def_flows_to(EA, EA, Object) :-
-        def(EA, Object).
+    def_flows_to(EA_from, EA_to, Object) :-
+        def(EA, Object),
+        flows_to(EA_from, EA_to).
 
     def_flows_to(EA_from, EA_to, Object) :-
         def_flows_to(_, EA_from, Object),
+        !def(EA_from, Object),
         flows_to(EA_from, EA_to),
         !def(EA_to, Object).
 
