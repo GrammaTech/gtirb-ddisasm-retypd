@@ -15,7 +15,7 @@ unsigned_conditional_move("CMOVBE"),
 unsigned_conditional_move("CMOVNA"),
 unsigned_conditional_move("CMOVNAE"),
 unsigned_conditional_move("CMOVNB"),
-unsigned_conditional_move("CMOVNBE") :- binary_isa("X84") ; binary_isa("X64").
+unsigned_conditional_move("CMOVNBE") :- binary_isa("X64") ; binary_isa("X64").
 
 .decl signed_conditional_move(Operation:symbol)
 
@@ -28,7 +28,7 @@ signed_conditional_move("CMOVNGE"),
 signed_conditional_move("CMOVNL"),
 signed_conditional_move("CMOVNLE"),
 signed_conditional_move("CMOVS"),
-signed_conditional_move("CMOVNS") :- binary_isa("X84") ; binary_isa("X64").
+signed_conditional_move("CMOVNS") :- binary_isa("X86") ; binary_isa("X64").
 
 .decl unsigned_set_flag(Operation:symbol)
 
@@ -39,7 +39,7 @@ unsigned_set_flag("SETBE"),
 unsigned_set_flag("SETNA"),
 unsigned_set_flag("SETNAE"),
 unsigned_set_flag("SETNB"),
-unsigned_set_flag("SETNBE") :- binary_isa("X84") ; binary_isa("X64").
+unsigned_set_flag("SETNBE") :- binary_isa("X86") ; binary_isa("X64").
 
 .decl signed_set_flag(Operation:symbol)
 
@@ -52,7 +52,7 @@ signed_set_flag("SETNGE"),
 signed_set_flag("SETNL"),
 signed_set_flag("SETNLE"),
 signed_set_flag("SETS"),
-signed_set_flag("SETNS") :- binary_isa("X84") ; binary_isa("X64").
+signed_set_flag("SETNS") :- binary_isa("X86") ; binary_isa("X64").
 
 .decl sign_jump(Operation:symbol)
 
@@ -79,10 +79,10 @@ unsigned_jump("JA"),
 unsigned_jump("JNBE") :- binary_isa("X64").
 
 .decl add_operation(Operation:symbol)
-add_operation("ADD") :- binary_isa("X84") ; binary_isa("X64").
+add_operation("ADD") :- binary_isa("X86") ; binary_isa("X64").
 
 .decl sub_operation(Operation:symbol)
-sub_operation("SUB") :- binary_isa("X84") ; binary_isa("X64").
+sub_operation("SUB") :- binary_isa("X64") ; binary_isa("X64").
 
 .decl push(EA:address)
 push(EA) :-
@@ -99,7 +99,7 @@ typesink_operation(Operation, "uint") :- arch.logic_operation(Operation).
 .decl condition_register(Register:register)
 condition_register("RFLAGS").
 
-.decl register_info(ChildRegister:register, ParentRegister:register, start:unsigned, end:unsigned)
+.decl register_info(ChildRegister:register, ParentRegister:register, Start:unsigned, End:unsigned)
 
 register_info("AL", "RAX", 0, 1) :- binary_isa("X64").
 register_info("AH", "RAX", 1, 2)  :- binary_isa("X64").
