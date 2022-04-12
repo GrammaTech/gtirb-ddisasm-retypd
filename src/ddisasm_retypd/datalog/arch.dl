@@ -15,7 +15,9 @@ unsigned_conditional_move("CMOVBE"),
 unsigned_conditional_move("CMOVNA"),
 unsigned_conditional_move("CMOVNAE"),
 unsigned_conditional_move("CMOVNB"),
-unsigned_conditional_move("CMOVNBE") :- binary_isa("X64") ; binary_isa("X64").
+unsigned_conditional_move("CMOVNBE"),
+unsigned_conditional_move("CMOVO"),
+unsigned_conditional_move("CMOVNO") :- binary_isa("X64") ; binary_isa("X64").
 
 .decl signed_conditional_move(Operation:symbol)
 
@@ -39,7 +41,9 @@ unsigned_set_flag("SETBE"),
 unsigned_set_flag("SETNA"),
 unsigned_set_flag("SETNAE"),
 unsigned_set_flag("SETNB"),
-unsigned_set_flag("SETNBE") :- binary_isa("X86") ; binary_isa("X64").
+unsigned_set_flag("SETNBE"),
+unsigned_set_flag("SETO"),
+unsigned_set_flag("SETNO") :- binary_isa("X86") ; binary_isa("X64").
 
 .decl signed_set_flag(Operation:symbol)
 
