@@ -203,6 +203,45 @@ register_info("FLAGS", "RFLAGS", 0, 2),
 register_info("EFLAGS", "RFLAGS", 0, 4),
 register_info("RFLAGS", "RFLAGS", 0, 8) :- binary_isa("X64").
 
+register_info("AL", "EAX", 0, 1),
+register_info("AH", "EAX", 1, 2),
+register_info("AX", "EAX", 0, 2),
+register_info("EAX", "EAX", 0, 4),
+
+register_info("BL", "EBX", 0, 1),
+register_info("BH", "EBX", 1, 2),
+register_info("BX", "EBX", 0, 2),
+register_info("EBX", "EBX", 0, 4),
+
+register_info("CL", "ECX", 0, 1),
+register_info("CH", "ECX", 1, 2),
+register_info("CX", "ECX", 0, 2),
+register_info("ECX", "ECX", 0, 4),
+
+register_info("DL", "EDX", 0, 1),
+register_info("DH", "EDX", 1, 2),
+register_info("DX", "EDX", 0, 2),
+register_info("EDX", "EDX", 0, 4),
+
+register_info("BPL", "EBP", 0, 1),
+register_info("BP", "EBP", 0, 2),
+register_info("EBP", "EBP", 0, 4),
+
+register_info("SIL", "ESI", 0, 1),
+register_info("SI", "ESI", 0, 2),
+register_info("ESI", "ESI", 0, 4),
+
+register_info("DIL", "EDI", 0, 1),
+register_info("DI", "EDI", 0, 2),
+register_info("EDI", "EDI", 0, 4),
+
+register_info("SPL", "ESP", 0, 1),
+register_info("SP", "ESP", 0, 2),
+register_info("ESP", "ESP", 0, 4),
+
+register_info("FLAGS", "EFLAGS", 0, 2),
+register_info("EFLAGS", "EFLAGS", 0, 4)  :- binary_isa("X86").
+
 .decl track_register(TrackedRegister:register, Register:register)
 track_register(TrackedRegister, Register) :-
     register_info(TrackedRegister, Register, _, _).
