@@ -49,8 +49,8 @@ local_next(EA, EA_next) :-
 
 // Utility relation to determine whether or not an instructions destination is
 // eventually dereferenced
-.decl register_derefenced(ea:address)
-register_derefenced(EA) :-
+.decl register_dereferenced(ea:address)
+register_dereferenced(EA) :-
     block_instruction(EA, _),
     explicit_writes_register(EA, Reg),
     reg_def_use.def_use(EA, Reg, EA_used),
@@ -61,7 +61,7 @@ register_derefenced(EA) :-
         instruction_get_src_op(EA_used, _, UsedSrcOp),
         op_regdirect(UsedSrcOp, TrackedReg),
         track_register(TrackedReg, Reg),
-        register_derefenced(EA_used)
+        register_dereferenced(EA_used)
     ).
 
 // Determine pairs of instructions that compare two numbers and then jump or a
@@ -96,7 +96,7 @@ compare_and_conditional(EA_cmp, EA_cond) :-
 typesink(EA, "DEST", Sink) :-
     instruction_get_operation(EA, Op),
     typesink_operation(Op, Sink),
-    !register_derefenced(EA).
+    !register_dereferenced(EA).
 
 // Set a type sink for a register that reads from an integer. For now we assume
 // that this is a signed integer, until proven otherwise.
