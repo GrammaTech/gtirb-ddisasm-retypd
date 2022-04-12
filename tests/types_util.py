@@ -13,7 +13,7 @@ from typing import Set, Tuple
 def is_type_equivalent(
     lhs: CType, rhs: CType, checked: Set[Tuple[CType, CType]]
 ) -> Tuple[bool, str]:
-    """ Compares two Retypd CType objects
+    """Compares two Retypd CType objects
     :param lhs: Left hand side type object
     :param rhs: Right hand side type object
     :param checked: Pairs of types already checked

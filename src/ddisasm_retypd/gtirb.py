@@ -22,7 +22,7 @@ import uuid
 
 
 class RetypdGtirbWriter:
-    """ Write gtirb-type data from CType data from retypd """
+    """Write gtirb-type data from CType data from retypd"""
 
     def __init__(self, module: gtirb.Module):
         self.module = module
@@ -30,7 +30,7 @@ class RetypdGtirbWriter:
         self.translate_cache = {}
 
     def _unknown_type(self, size: int) -> uuid.UUID:
-        """ Generate a unique unknown type of a given size
+        """Generate a unique unknown type of a given size
         :param size: Size in bytes of the unknown type
         :returns: gtirb-type UUID of allocated type
         """
@@ -39,7 +39,7 @@ class RetypdGtirbWriter:
         return unk.uuid
 
     def _add_type(self, ctype: c_types.CType, type: AbstractType) -> uuid.UUID:
-        """ Add a CType object's new gtirb-type
+        """Add a CType object's new gtirb-type
         :param ctype: CType object whose gtirb-type is being added
         :param type: gtirb-type object who is being added
         :returns: UUID of the new gtirb-type
@@ -49,7 +49,7 @@ class RetypdGtirbWriter:
         return type.uuid
 
     def _translate_ctype(self, ctype: c_types.CType) -> uuid.UUID:
-        """ Translate a CType object to a gtirb-retypd object
+        """Translate a CType object to a gtirb-retypd object
         :param ctype: CType object to translate
         :returns: Allocated UUID for that gtirb-type object
         """
@@ -89,7 +89,11 @@ class RetypdGtirbWriter:
             return self._add_type(ctype, array)
         elif isinstance(ctype, c_types.PointerType):
             # Add type first then handle pointer, in case of recursive type
-            ptr = PointerType(uuid.uuid4(), self.types, None,)
+            ptr = PointerType(
+                uuid.uuid4(),
+                self.types,
+                None,
+            )
             tmp = self._add_type(ctype, ptr)
             ptr._pointed_to = self._translate_ctype(ctype.target_type)
             return tmp
@@ -99,7 +103,10 @@ class RetypdGtirbWriter:
                 self.types,
                 ctype.size if ctype.fields[-1].ctype is not None else 0,
                 [
-                    (field.offset or 0, self._translate_ctype(field.ctype),)
+                    (
+                        field.offset or 0,
+                        self._translate_ctype(field.ctype),
+                    )
                     for field in ctype.fields
                 ],
             )
@@ -111,7 +118,7 @@ class RetypdGtirbWriter:
     def add_types(
         self, derived_types: Dict[DerivedTypeVariable, c_types.CType]
     ):
-        """ Add all types from the output to a GTIRB module
+        """Add all types from the output to a GTIRB module
         :param derived_types: Output CType map from retypd
         """
         functions = Function.build_functions(self.module)

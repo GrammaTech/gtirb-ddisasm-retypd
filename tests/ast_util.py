@@ -67,7 +67,7 @@ class TestHeader:
         return (type, ast)
 
     def _load_ast(self):
-        """ Load the ASTs functions and user-defined types """
+        """Load the ASTs functions and user-defined types"""
         self.ast_root = asts.AST.from_string(
             self.header_file.read_text(), language=asts.ASTLanguage.C
         )

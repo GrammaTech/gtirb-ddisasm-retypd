@@ -9,7 +9,7 @@ from typing import Dict, Set, Tuple
 
 
 def filter_name(function: Function) -> str:
-    """ Do name filtering identical to the one implemented for souffle
+    """Do name filtering identical to the one implemented for souffle
     :param function: Function to get the filtered name of
     :returns: String of filtered name
     """
@@ -23,7 +23,7 @@ def filter_name(function: Function) -> str:
 
 
 def get_callgraph(ir: gtirb.IR) -> Dict[str, Set[str]]:
-    """ Get the callgraph of the GTIRB IR
+    """Get the callgraph of the GTIRB IR
     :param ir: GTIRB IR to get call graph of
     :returns: Map of call graphs
     """
@@ -53,7 +53,7 @@ def get_callgraph(ir: gtirb.IR) -> Dict[str, Set[str]]:
 
 
 def get_arch_sizes(ir: gtirb.IR) -> Tuple[int, int]:
-    """ Address and register sizes for a given IR's ISA
+    """Address and register sizes for a given IR's ISA
     :param ir: GTIRB IR to read from, only uses module 0 for now
     :returns: (ptr, reg) sizes in bits
     """
@@ -79,7 +79,7 @@ def get_arch_sizes(ir: gtirb.IR) -> Tuple[int, int]:
 
 
 def extract_souffle_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts and outputs to a directory as facts
+    """Write souffle facts and outputs to a directory as facts
     :param ir: gtirb.IR to read souffle facts from
     :param directory: Directory to write souffle facts to
     """
@@ -101,7 +101,7 @@ csv.register_dialect("souffle", delimiter="\t", quoting=csv.QUOTE_NONE)
 
 
 def extract_instruction_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts about instruction in the CFG for a GTIRB IR
+    """Write souffle facts about instruction in the CFG for a GTIRB IR
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
@@ -140,7 +140,7 @@ def extract_instruction_relations(ir: gtirb.IR, directory: Path):
 
 
 def extract_block_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts about blocks in the CFG for a GTIRB IR
+    """Write souffle facts about blocks in the CFG for a GTIRB IR
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
@@ -158,7 +158,7 @@ def extract_block_relations(ir: gtirb.IR, directory: Path):
 
 
 def extract_edge_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts about edges in the CFG for a GTIRB IR
+    """Write souffle facts about edges in the CFG for a GTIRB IR
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
@@ -216,7 +216,7 @@ def extract_edge_relations(ir: gtirb.IR, directory: Path):
 
 
 def extract_cfg_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts from the CFG in the current GTIRB IR
+    """Write souffle facts from the CFG in the current GTIRB IR
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
@@ -226,7 +226,7 @@ def extract_cfg_relations(ir: gtirb.IR, directory: Path):
 
 
 def extract_arch_relations(ir: gtirb.IR, directory: Path):
-    """ Write souffle facts from the architecture in the current GTIRB IR
+    """Write souffle facts from the architecture in the current GTIRB IR
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """

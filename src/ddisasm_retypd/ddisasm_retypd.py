@@ -43,7 +43,7 @@ class DdisasmRetypd:
         debug_dir: Optional[Path] = None,
         compiled: bool = False,
     ):
-        """ Execute souffle, and if available dump relations in the debug dir
+        """Execute souffle, and if available dump relations in the debug dir
         :param debug_dir: Optional directory to dump output information to
         """
         extract_souffle_relations(self.ir, facts_dir)
@@ -60,7 +60,7 @@ class DdisasmRetypd:
         )
 
     def addr_to_offset(self, loc: int) -> Optional[gtirb.Offset]:
-        """ Translate an address to an offset into a block
+        """Translate an address to an offset into a block
         :param loc: Address to convert to to a block
         :returns: If possible, the offset, otherwise None
         """
@@ -80,7 +80,7 @@ class DdisasmRetypd:
     def _insert_subtypes(
         self, add_comments: bool = False, debug_categories: List[str] = None
     ) -> Dict[str, ConstraintSet]:
-        """ Add subtypes to the constraints map
+        """Add subtypes to the constraints map
         :param add_comments: If True, a comments map will be populated with
             subtype constraints for visualization + debugging
         :param debug_categories: Which categories of relations to insert as
@@ -130,7 +130,7 @@ class DdisasmRetypd:
         Dict[DerivedTypeVariable, ConstraintSet],
         Dict[DerivedTypeVariable, Sketches],
     ]:
-        """ Solve the current program's constraint set
+        """Solve the current program's constraint set
         :param debug_dir: Directory to output debug information to
         :param compiled: Whether to compile the souffle program or not
         :param debug_categories: Which categories of relations to insert as
@@ -179,7 +179,7 @@ class DdisasmRetypd:
         compiled: bool = False,
         debug_categories: List[str] = None,
     ) -> Dict[DerivedTypeVariable, CType]:
-        """ Execute the retypd algorithm
+        """Execute the retypd algorithm
         :param debug_dir: Directory to write debug output if desired
         :param compiled: Whether or not to compile the souffle program
         :param debug_categories: Which categories of relations to insert as
@@ -203,7 +203,7 @@ class DdisasmRetypd:
 
 
 def print_user_types(types: Dict[DerivedTypeVariable, CType]):
-    """ Recursively detect types that would be considered a 'user type', i.e.
+    """Recursively detect types that would be considered a 'user type', i.e.
         a function prototype or any compound type
     :param types: Types output by the retypd algorithm
     """

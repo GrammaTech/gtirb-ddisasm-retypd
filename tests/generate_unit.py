@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 
 class UnitTestGenerator:
     """Use SEL's asts module to augment header files with their generated
-       constraints for unit testing
+    constraints for unit testing
     """
 
     def __init__(self, source_dir: Path, gtirb_files: List[Path]):
@@ -26,7 +26,7 @@ class UnitTestGenerator:
         self.comments = defaultdict(dict)
 
     def _generate_comments(self, gtirb_file: Path):
-        """ Generate constraint comment for the functions in a given GTIRB
+        """Generate constraint comment for the functions in a given GTIRB
         :param gtirb_file: Path to the GTIRB file whose comments should be
             created
         """
@@ -62,8 +62,8 @@ class UnitTestGenerator:
             self._generate_comments(gtirb_file)
 
     def _find_source_line(self, root: asts.AST, child: asts.AST) -> int:
-        """ Find which line of source a given child of an AST starts at
-        :param """
+        """Find which line of source a given child of an AST starts at
+        :param"""
         for (range_child, ranges) in root.ast_source_ranges():
             if child == range_child:
                 return min(ranges, key=lambda x: x[0])[0]
@@ -71,20 +71,21 @@ class UnitTestGenerator:
         raise ValueError(f"Failed to find source range for {child}")
 
     def _parse_comment(self, comment: str) -> Optional[Tuple[str, str]]:
-        """ Parse whether if a comment contains generated constraints, the name
+        """Parse whether if a comment contains generated constraints, the name
             and version of the function that was encoded in that function
         :param comment: String of the comment being parsed
         :returns: (name, version) tuple if available, otherwise None
         """
         generated = re.findall(
-            r"Generated constraints for (.*) at -(O\d)", comment,
+            r"Generated constraints for (.*) at -(O\d)",
+            comment,
         )
         return generated[0] if len(generated) > 0 else None
 
     def _transform_existing_comments(
         self, ast: asts.AST
     ) -> Optional[asts.LiteralOrAST]:
-        """ Transform comments that already exist in the AST to the new lines
+        """Transform comments that already exist in the AST to the new lines
         :param ast: AST to transform
         :returns: If this is a generated comment, the updated form
         """
@@ -100,13 +101,15 @@ class UnitTestGenerator:
                     del self.comments[name][version]
 
                     return asts.AST.from_string(
-                        comment, asts.ASTLanguage.C, deepest=True,
+                        comment,
+                        asts.ASTLanguage.C,
+                        deepest=True,
                     )
 
     def _insert_new_comment(
         self, ast: asts.AST, name: str, version: str
     ) -> asts.AST:
-        """ Insert a new comment for a given tuple
+        """Insert a new comment for a given tuple
         :param ast: Root AST to insert into
         :param name: Name of the function to insert for
         :param version: Version of the function to insert
@@ -121,7 +124,8 @@ class UnitTestGenerator:
             )
 
             while isinstance(
-                name_ast, (asts.CPointerDeclarator, asts.CFunctionDeclarator0),
+                name_ast,
+                (asts.CPointerDeclarator, asts.CFunctionDeclarator0),
             ):
                 name_ast = child.child_slot("TYPE")
 
@@ -143,7 +147,9 @@ class UnitTestGenerator:
 
             children_line = self._find_source_line(ast, child)
             new_ast = asts.AST.from_string(
-                comment, asts.ASTLanguage.C, deepest=True,
+                comment,
+                asts.ASTLanguage.C,
+                deepest=True,
             )
 
             assert isinstance(new_ast, asts.CComment)
@@ -153,7 +159,7 @@ class UnitTestGenerator:
         return ast
 
     def _insert_remaining_comments(self, ast: asts.AST) -> asts.AST:
-        """ Insert comments that weren't used as updates of older comments into
+        """Insert comments that weren't used as updates of older comments into
             the root of the AST before the function declarations
         :param ast: Root AST to insert into
         :returns: The modified root AST
@@ -165,7 +171,7 @@ class UnitTestGenerator:
         return ast
 
     def _transform_header(self, header_file: Path, output_file: Path):
-        """ Run the transformation pipeline on a header file, and write the
+        """Run the transformation pipeline on a header file, and write the
             resultant AST back to another file
         :param header_file: Source header file
         :param output_file: Target header file
@@ -179,7 +185,7 @@ class UnitTestGenerator:
         output_file.write_text(header.source_text)
 
     def transform_all(self, output_dir: Path):
-        """ Transform all loaded header files into an output directory
+        """Transform all loaded header files into an output directory
         :param output_dir: Directory to write resultant header files
         """
         for header_file in self.gtirb_headers.values():

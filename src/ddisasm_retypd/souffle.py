@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 def _find_souffle() -> Path:
-    """ Find a suitable souffle binary to use
+    """Find a suitable souffle binary to use
     :returns: Path to the souffle binary
     """
     which_path = shutil.which("souffle")
@@ -25,7 +25,7 @@ def execute_souffle(
     compiled: bool = False,
     debug_dir: Optional[Path] = None,
 ) -> Dict[str, List[Tuple[str, ...]]]:
-    """ Execute souffle and get some outputs from it
+    """Execute souffle and get some outputs from it
     :param facts: Path to pre-existing facts
     :param datalog: Path to datalog file to execute
     :param output_rels: List of relations to get outputs of

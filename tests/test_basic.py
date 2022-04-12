@@ -10,7 +10,7 @@ import pytest
 
 
 def pytest_generate_tests(metafunc):
-    """ Find and load (IR, Header) pairs from the test directory
+    """Find and load (IR, Header) pairs from the test directory
     :parma metafunc: Test function being analyzed
     """
     if "ir" in metafunc.fixturenames and "header" in metafunc.fixturenames:
@@ -95,7 +95,7 @@ def test_generated_constraints(ir, header, level, tmp_path):
 
 @pytest.mark.nightly
 def test_derived_constraints(ir, header, tmp_path):
-    """ Verify that the constraints derived from retypd are valid """
+    """Verify that the constraints derived from retypd are valid"""
     dr = DdisasmRetypd(ir, tmp_path)
     derived_constraints_, _ = dr._solve_constraints(tmp_path, False)
     derived_constraints = {
@@ -129,7 +129,7 @@ def test_derived_constraints(ir, header, tmp_path):
 
 @pytest.mark.nightly
 def test_correct_num_args(ir, header, tmp_path):
-    """ Validate that we get the number of arguments """
+    """Validate that we get the number of arguments"""
     dr = DdisasmRetypd(ir, tmp_path)
     type_outs = {str(dtv): ctype for dtv, ctype in dr(compiled=False).items()}
 
@@ -149,7 +149,7 @@ def test_correct_num_args(ir, header, tmp_path):
 
 @pytest.mark.nightly
 def test_types_correctly(ir, header, tmp_path):
-    """ Validate that we are generating types correctly """
+    """Validate that we are generating types correctly"""
     dr = DdisasmRetypd(ir, tmp_path)
     type_outs = {str(dtv): ctype for dtv, ctype in dr(compiled=False).items()}
 
