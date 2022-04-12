@@ -115,92 +115,92 @@ condition_register("RFLAGS").
 // Detialed information about register
 .decl register_info(ChildRegister:register, ParentRegister:register, Start:unsigned, End:unsigned)
 
-register_info("AL", "RAX", 0, 1) :- binary_isa("X64").
-register_info("AH", "RAX", 1, 2)  :- binary_isa("X64").
-register_info("AX", "RAX", 0, 2)  :- binary_isa("X64").
-register_info("EAX", "RAX", 0, 4) :- binary_isa("X64").
-register_info("RAX", "RAX", 0, 8) :- binary_isa("X64").
+register_info("AL", "RAX", 0, 1),
+register_info("AH", "RAX", 1, 2),
+register_info("AX", "RAX", 0, 2),
+register_info("EAX", "RAX", 0, 4),
+register_info("RAX", "RAX", 0, 8),
 
-register_info("BL", "RBX", 0, 1) :- binary_isa("X64").
-register_info("BH", "RBX", 1, 2) :- binary_isa("X64").
-register_info("BX", "RBX", 0, 2) :- binary_isa("X64").
-register_info("EBX", "RBX", 0, 4) :- binary_isa("X64").
-register_info("RBX", "RBX", 0, 8) :- binary_isa("X64").
+register_info("BL", "RBX", 0, 1),
+register_info("BH", "RBX", 1, 2),
+register_info("BX", "RBX", 0, 2),
+register_info("EBX", "RBX", 0, 4),
+register_info("RBX", "RBX", 0, 8),
 
-register_info("CL", "RCX", 0, 1) :- binary_isa("X64").
-register_info("CH", "RCX", 1, 2) :- binary_isa("X64").
-register_info("CX", "RCX", 0, 2) :- binary_isa("X64").
-register_info("ECX", "RCX", 0, 4) :- binary_isa("X64").
-register_info("RCX", "RCX", 0, 8) :- binary_isa("X64").
+register_info("CL", "RCX", 0, 1),
+register_info("CH", "RCX", 1, 2),
+register_info("CX", "RCX", 0, 2),
+register_info("ECX", "RCX", 0, 4),
+register_info("RCX", "RCX", 0, 8),
 
-register_info("DL", "RDX", 0, 1) :- binary_isa("X64").
-register_info("DH", "RDX", 1, 2) :- binary_isa("X64").
-register_info("DX", "RDX", 0, 2) :- binary_isa("X64").
-register_info("EDX", "RDX", 0, 4) :- binary_isa("X64").
-register_info("RDX", "RDX", 0, 8) :- binary_isa("X64").
+register_info("DL", "RDX", 0, 1),
+register_info("DH", "RDX", 1, 2),
+register_info("DX", "RDX", 0, 2),
+register_info("EDX", "RDX", 0, 4),
+register_info("RDX", "RDX", 0, 8),
 
-register_info("BPL", "RBP", 0, 1) :- binary_isa("X64").
-register_info("BP", "RBP", 0, 2) :- binary_isa("X64").
-register_info("EBP", "RBP", 0, 4) :- binary_isa("X64").
-register_info("RBP", "RBP", 0, 8) :- binary_isa("X64").
+register_info("BPL", "RBP", 0, 1),
+register_info("BP", "RBP", 0, 2),
+register_info("EBP", "RBP", 0, 4),
+register_info("RBP", "RBP", 0, 8),
 
-register_info("SIL", "RSI", 0, 1) :- binary_isa("X64").
-register_info("SI", "RSI", 0, 2) :- binary_isa("X64").
-register_info("ESI", "RSI", 0, 4) :- binary_isa("X64").
-register_info("RSI", "RSI", 0, 8) :- binary_isa("X64").
+register_info("SIL", "RSI", 0, 1),
+register_info("SI", "RSI", 0, 2),
+register_info("ESI", "RSI", 0, 4),
+register_info("RSI", "RSI", 0, 8),
 
-register_info("DIL", "RDI", 0, 1) :- binary_isa("X64").
-register_info("DI", "RDI", 0, 2) :- binary_isa("X64").
-register_info("EDI", "RDI", 0, 4) :- binary_isa("X64").
-register_info("RDI", "RDI", 0, 8) :- binary_isa("X64").
+register_info("DIL", "RDI", 0, 1),
+register_info("DI", "RDI", 0, 2),
+register_info("EDI", "RDI", 0, 4),
+register_info("RDI", "RDI", 0, 8),
 
-register_info("SPL", "RSP", 0, 1) :- binary_isa("X64").
-register_info("SP", "RSP", 0, 2) :- binary_isa("X64").
-register_info("ESP", "RSP", 0, 4) :- binary_isa("X64").
-register_info("RSP", "RSP", 0, 8) :- binary_isa("X64").
+register_info("SPL", "RSP", 0, 1),
+register_info("SP", "RSP", 0, 2),
+register_info("ESP", "RSP", 0, 4),
+register_info("RSP", "RSP", 0, 8),
 
-register_info("R8B", "R8", 0, 1) :- binary_isa("X64").
-register_info("R8W", "R8", 0, 2) :- binary_isa("X64").
-register_info("R8", "R8", 0, 4) :- binary_isa("X64").
-register_info("R8D", "R8", 0, 8) :- binary_isa("X64").
+register_info("R8B", "R8", 0, 1),
+register_info("R8W", "R8", 0, 2),
+register_info("R8", "R8", 0, 4),
+register_info("R8D", "R8", 0, 8),
 
-register_info("R9B", "R9", 0, 1) :- binary_isa("X64").
-register_info("R9W", "R9", 0, 2) :- binary_isa("X64").
-register_info("R9", "R9", 0, 4) :- binary_isa("X64").
-register_info("R9D", "R9", 0, 8) :- binary_isa("X64").
+register_info("R9B", "R9", 0, 1),
+register_info("R9W", "R9", 0, 2),
+register_info("R9", "R9", 0, 4),
+register_info("R9D", "R9", 0, 8),
 
-register_info("R10B", "R10", 0, 1) :- binary_isa("X64").
-register_info("R10W", "R10", 0, 2) :- binary_isa("X64").
-register_info("R10", "R10", 0, 4) :- binary_isa("X64").
-register_info("R10D", "R10", 0, 8) :- binary_isa("X64").
+register_info("R10B", "R10", 0, 1),
+register_info("R10W", "R10", 0, 2),
+register_info("R10", "R10", 0, 4),
+register_info("R10D", "R10", 0, 8),
 
-register_info("R11B", "R11", 0, 1) :- binary_isa("X64").
-register_info("R11W", "R11", 0, 2) :- binary_isa("X64").
-register_info("R11", "R11", 0, 4) :- binary_isa("X64").
-register_info("R11D", "R11", 0, 8) :- binary_isa("X64").
+register_info("R11B", "R11", 0, 1),
+register_info("R11W", "R11", 0, 2),
+register_info("R11", "R11", 0, 4),
+register_info("R11D", "R11", 0, 8),
 
-register_info("R12B", "R12", 0, 1) :- binary_isa("X64").
-register_info("R12W", "R12", 0, 2) :- binary_isa("X64").
-register_info("R12", "R12", 0, 4) :- binary_isa("X64").
-register_info("R12D", "R12", 0, 8) :- binary_isa("X64").
+register_info("R12B", "R12", 0, 1),
+register_info("R12W", "R12", 0, 2),
+register_info("R12", "R12", 0, 4),
+register_info("R12D", "R12", 0, 8),
 
-register_info("R13B", "R13", 0, 1) :- binary_isa("X64").
-register_info("R13W", "R13", 0, 2) :- binary_isa("X64").
-register_info("R13", "R13", 0, 4) :- binary_isa("X64").
-register_info("R13D", "R13", 0, 8) :- binary_isa("X64").
+register_info("R13B", "R13", 0, 1),
+register_info("R13W", "R13", 0, 2),
+register_info("R13", "R13", 0, 4),
+register_info("R13D", "R13", 0, 8),
 
-register_info("R14B", "R14", 0, 1) :- binary_isa("X64").
-register_info("R14W", "R14", 0, 2) :- binary_isa("X64").
-register_info("R14", "R14", 0, 4) :- binary_isa("X64").
-register_info("R14D", "R14", 0, 8) :- binary_isa("X64").
+register_info("R14B", "R14", 0, 1),
+register_info("R14W", "R14", 0, 2),
+register_info("R14", "R14", 0, 4),
+register_info("R14D", "R14", 0, 8),
 
-register_info("R15B", "R15", 0, 1) :- binary_isa("X64").
-register_info("R15W", "R15", 0, 2) :- binary_isa("X64").
-register_info("R15", "R15", 0, 4) :- binary_isa("X64").
-register_info("R15D", "R15", 0, 8) :- binary_isa("X64").
+register_info("R15B", "R15", 0, 1),
+register_info("R15W", "R15", 0, 2),
+register_info("R15", "R15", 0, 4),
+register_info("R15D", "R15", 0, 8),
 
-register_info("FLAGS", "RFLAGS", 0, 2) :- binary_isa("X64").
-register_info("EFLAGS", "RFLAGS", 0, 4) :- binary_isa("X64").
+register_info("FLAGS", "RFLAGS", 0, 2),
+register_info("EFLAGS", "RFLAGS", 0, 4),
 register_info("RFLAGS", "RFLAGS", 0, 8) :- binary_isa("X64").
 
 .decl track_register(TrackedRegister:register, Register:register)
