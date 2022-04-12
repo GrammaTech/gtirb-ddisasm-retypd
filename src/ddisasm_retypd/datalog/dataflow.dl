@@ -150,6 +150,10 @@ typesink(EA, "SRC", Sink) :-
 
 // Memory access on a given [base+offset], whether it is a load or a store is
 // determined by Mode.
+// TODO: This is currently used for analyzing stack accesses and other memory
+// accesses. This assumes that theres no stride to the accesses, as arrays are
+// not yet supported. These are intended to be supported in a future release,
+// however for now it assumes Multiplier=1.
 .decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:number)
 
 memory_access(Mode, EA, Base, Offset, as(NBytes, number)) :-
