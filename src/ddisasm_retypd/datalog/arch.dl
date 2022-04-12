@@ -6,6 +6,7 @@ zero_extend("MOVZX") :- binary_isa("X64").
 sign_extend("MOVSX"),
 sign_extend("MOVSXD") :- binary_isa("X64").
 
+// Conditional-flag reading opcodes
 .decl unsigned_conditional_move(Operation:symbol)
 
 unsigned_conditional_move("CMOVA"),
@@ -86,12 +87,14 @@ unsigned_jump("JNBE"),
 unsigned_jump("JO"),
 unsigned_jump("JNO") :- binary_isa("X64").
 
+// Arithmetic operation semantics
 .decl add_operation(Operation:symbol)
 add_operation("ADD") :- binary_isa("X86") ; binary_isa("X64").
 
 .decl sub_operation(Operation:symbol)
 sub_operation("SUB") :- binary_isa("X64") ; binary_isa("X64").
 
+// Stack operations
 .decl push(EA:address)
 push(EA) :-
     instruction_get_operation(EA, "PUSH").
@@ -100,13 +103,16 @@ push(EA) :-
 pop(EA) :-
     instruction_get_operation(EA, "POP").
 
+// Per-opcode typesinking
 .decl typesink_operation(Operation:symbol, Sink:lattice_type)
 typesink_operation(Operation, "int") :- arch.arithmetic_operation(Operation).
 typesink_operation(Operation, "uint") :- arch.logic_operation(Operation).
 
+// Which register to track as the flags
 .decl condition_register(Register:register)
 condition_register("RFLAGS").
 
+// Detialed information about register
 .decl register_info(ChildRegister:register, ParentRegister:register, Start:unsigned, End:unsigned)
 
 register_info("AL", "RAX", 0, 1) :- binary_isa("X64").
