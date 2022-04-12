@@ -63,7 +63,9 @@ sign_jump("JNL"),
 sign_jump("JLE"),
 sign_jump("JNG"),
 sign_jump("JG"),
-sign_jump("JNLE") :- binary_isa("X64").
+sign_jump("JNLE"),
+sign_jump("JS"),
+sign_jump("JNS") :- binary_isa("X64").
 
 .decl unsigned_jump(Operation:symbol)
 
@@ -76,7 +78,9 @@ unsigned_jump("JNC"),
 unsigned_jump("JBE"),
 unsigned_jump("JNA"),
 unsigned_jump("JA"),
-unsigned_jump("JNBE") :- binary_isa("X64").
+unsigned_jump("JNBE"),
+unsigned_jump("JO"),
+unsigned_jump("JNO") :- binary_isa("X64").
 
 .decl add_operation(Operation:symbol)
 add_operation("ADD") :- binary_isa("X86") ; binary_isa("X64").
