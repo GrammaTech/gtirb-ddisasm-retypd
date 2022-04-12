@@ -92,12 +92,16 @@ comment(EA, Comment, "arithmetic") :-
     Comment=cat(Dst, " = ", Src, "*", to_string(Mult), " + ", to_string(Offset)).
 
 comment(EA, Comment, "def-use") :-
-    reg_def_use.def_use(EA, Reg, _),
+    reg_def_use.def(EA, Reg),
     Comment=cat("def(", Reg, ")").
 
 comment(EA, Comment, "def-use") :-
-    reg_def_use.def_use(EA_def, Reg, EA),
-    Comment=cat("use(", Reg, " from ", to_string(EA_def), ")").
+    reg_def_use.use(EA, Reg),
+    Comment=cat("use(", Reg, ")").
+
+comment(EA, Comment, "def-use") :-
+    reg_def_use.def_use(EA, Reg, EA_to),
+    Comment=cat("def_use(From=", to_string(EA), ", Reg=", Reg, ", To=", to_string(EA_to), ")").
 
 comment(EA, Comment, "dataflow") :-
     local_next(EA, EA_next),
