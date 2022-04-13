@@ -1,0 +1,153 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_STRATEGY: clone
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+  PYTEST_MARKER: commit
+
+stages:
+  - check-format
+  - build-image
+  - test
+  - build-package
+  - test-package
+  - deploy
+
+default:
+  image: python:3.7-slim
+  tags: ['kubernetes']
+
+build-image:
+  stage: build-image
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
+  script:
+    # Configure authentication credentials
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    # Run the kaniko executor, which will build our image (using a cache if available) and push it to the CI_REGISTRY.
+    # Downstream jobs will leverage this image for testing and exporting.
+    - >-
+      /kaniko/executor
+      --context=$CI_PROJECT_DIR
+      --dockerfile=$CI_PROJECT_DIR/.ci/Dockerfile
+      --destination=$IMAGE_NAME
+      --build-arg=GL_PKG_API_TOKEN="$GL_PKG_API_TOKEN"
+      --target=ubuntu20
+  only:
+    changes:
+      - .ci/*
+
+check-format:
+  stage: check-format
+  before_script: []
+  script:
+    - apt update
+    - apt install -y --no-install-recommends git
+    - apt purge -y --auto-remove
+    - python3 -m pip install pre-commit
+    - pre-commit run --all-files --show-diff-on-failure
+    # helper message for new committers
+    - |+
+      cat <<EOF
+      ================================================================================
+      If this stage fails, the formatting of your changes may be incorrect.
+      To automatically format your files, install pre-commit:
+          pip3 install pre-commit
+          pre-commit install
+      pre-commit will now automatically format any files before commit.
+      To fix any misformatted files, run:
+          pre-commit run --all-files
+      And then commit any changes.
+      More information regarding pre-commit can be found at https://pre-commit.com.
+
+      NOTE FOR PROJECTS WITH C/C++ CODE:
+      pre-commit will by default use the correct version of every formatting tool
+      EXCEPT FOR clang-format. You need to ensure the version of clang-format you
+      use is EXACTLY version 6.0.0. This is available in Ubuntu 18 by default.
+      ================================================================================
+      EOF
+
+test:
+  image: $IMAGE_NAME
+  stage: test
+  script:
+    - wget -O - $APT_REPO/conf/apt.gpg.key | apt-key add -
+    - echo "deb $APT_REPO $(lsb_release -sc) $APT_COMPONENT" >> /etc/apt/sources.list
+    - apt-get update -y
+    - apt-get install -y gtirb-pprinter ddisasm
+    - ./tests/build_tests.sh
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --pre --extra-index-url=$EXTRA_INDEX_URL .[test]
+    - pytest --cov=gtirb_ddisasm_retypd --cov-report=term -m $PYTEST_MARKER --cov-report=xml:coverage.xml --junitxml=report.xml ./tests/
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      cobertura: coverage.xml
+  variables:
+    APT_REPO: $INTERNAL_APT_REPO
+    APT_COMPONENT: unstable
+
+build_package:
+  stage: build-package
+  artifacts:
+    paths:
+      - dist/gtirb_ddisasm_retypd-*-py3-none-any.whl
+    expire_in: 1 weeks
+  script:
+    - python3 setup.py sdist bdist_wheel
+
+test_package:
+  variables:
+    GIT_STRATEGY: none
+  stage: test-package
+  before_script: []
+  script:
+    - for f in dist/*.whl; do python3 -m pip install $f; done
+
+export_external:
+  stage: deploy
+  script:
+    - pip install twine requests pkginfo
+    - python3 setup.py bdist_wheel --dist-dir=$CI_PROJECT_DIR/dist
+    - VERSION=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'src/ddisasm_retypd/version.py'); print(pkginfo.__version__)")
+    # Do not publish .dev versions on the public pypi
+    - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ ]]; then exit 1; fi
+    - python3 -m twine upload --verbose $CI_PROJECT_DIR/dist/*.whl -u __token__ -p $PYPI_API_KEY
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+
+export_internal:
+  stage: deploy
+  script:
+    - pip install -r twine requests pkginfo
+    - python3 setup.py bdist_wheel --dist-dir=$CI_PROJECT_DIR/dist
+    - VERSION=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_functions/version.py'); print(pkginfo.__version__)")
+    - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ && "$CI_COMMIT_REF_NAME" =~ ^release-.* ]]; then exit 1; fi
+    # this job is not using $CI_JOB_TOKEN because it only has read access
+    # https://gitlab.com/gitlab-org/gitlab/-/issues/35067
+    # this job is also not using $CI_DEPLOY_USER and $CI_DEPLOY_PASSWORD because it only has write access
+    - if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
+        if [[ ! "$VERSION" =~ \.dev[[:digit:]]*$ ]]; then
+          echo "[ERROR] On the main branch, we must be exporting a -dev version.";
+          exit 1;
+        fi;
+        if pip3 install --extra-index-url=$EXTRA_INDEX_URL "gtirb_ddisasm_retypds>$VERSION" 2>/dev/null; then
+          echo "[ERROR] The package version being published on main should always be >= the version in the repository.";
+          exit 1;
+        fi;
+        wget ${CI_SERVER_HOST}/research/templates/python-module/raw/master/delete_remote_packages.py;
+        python3 $CI_PROJECT_DIR/delete_remote_packages.py $GL_PKG_API_TOKEN dist/*.whl;
+      fi
+    - wget ${CI_SERVER_HOST}/research/templates/python-module/raw/master/.pypirc
+    - sed "s/password = <access token>/password = $GL_PKG_API_TOKEN/" $CI_PROJECT_DIR/.pypirc > ~/.pypirc
+    - python3 -m twine upload --verbose --repository repypi $CI_PROJECT_DIR/dist/*.whl
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+    # If you need to publish a package for a specific branch, change the
+    # package version to something like, '0.0.0.dev0+mybranchname', uncomment
+    # the rule below and replace 'mybranchname' with your branch name.
+    #- if: '$CI_COMMIT_BRANCH == "mybranchname"'
+    #  changes:
+    #    - src/version.py

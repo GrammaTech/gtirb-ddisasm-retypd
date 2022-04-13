@@ -1,0 +1,247 @@
+// Zero- and sign-extension opcodes
+.decl zero_extend(Operation:symbol)
+zero_extend("MOVZX") :- binary_isa("X64").
+
+.decl sign_extend(Operation:symbol)
+sign_extend("MOVSX"),
+sign_extend("MOVSXD") :- binary_isa("X64").
+
+// Conditional-flag reading opcodes
+.decl unsigned_conditional_move(Operation:symbol)
+
+unsigned_conditional_move("CMOVA"),
+unsigned_conditional_move("CMOVAE"),
+unsigned_conditional_move("CMOVB"),
+unsigned_conditional_move("CMOVBE"),
+unsigned_conditional_move("CMOVNA"),
+unsigned_conditional_move("CMOVNAE"),
+unsigned_conditional_move("CMOVNB"),
+unsigned_conditional_move("CMOVNBE"),
+unsigned_conditional_move("CMOVO"),
+unsigned_conditional_move("CMOVNO") :- binary_isa("X64") ; binary_isa("X64").
+
+.decl signed_conditional_move(Operation:symbol)
+
+signed_conditional_move("CMOVG"),
+signed_conditional_move("CMOVGE"),
+signed_conditional_move("CMOVL"),
+signed_conditional_move("CMOVLE"),
+signed_conditional_move("CMOVNG"),
+signed_conditional_move("CMOVNGE"),
+signed_conditional_move("CMOVNL"),
+signed_conditional_move("CMOVNLE"),
+signed_conditional_move("CMOVS"),
+signed_conditional_move("CMOVNS") :- binary_isa("X86") ; binary_isa("X64").
+
+.decl unsigned_set_flag(Operation:symbol)
+
+unsigned_set_flag("SETA"),
+unsigned_set_flag("SETAE"),
+unsigned_set_flag("SETB"),
+unsigned_set_flag("SETBE"),
+unsigned_set_flag("SETNA"),
+unsigned_set_flag("SETNAE"),
+unsigned_set_flag("SETNB"),
+unsigned_set_flag("SETNBE"),
+unsigned_set_flag("SETO"),
+unsigned_set_flag("SETNO") :- binary_isa("X86") ; binary_isa("X64").
+
+.decl signed_set_flag(Operation:symbol)
+
+signed_set_flag("SETG"),
+signed_set_flag("SETGE"),
+signed_set_flag("SETL"),
+signed_set_flag("SETLE"),
+signed_set_flag("SETNG"),
+signed_set_flag("SETNGE"),
+signed_set_flag("SETNL"),
+signed_set_flag("SETNLE"),
+signed_set_flag("SETS"),
+signed_set_flag("SETNS") :- binary_isa("X86") ; binary_isa("X64").
+
+.decl sign_jump(Operation:symbol)
+
+sign_jump("JL"),
+sign_jump("JNGE"),
+sign_jump("JGE"),
+sign_jump("JNL"),
+sign_jump("JLE"),
+sign_jump("JNG"),
+sign_jump("JG"),
+sign_jump("JNLE"),
+sign_jump("JS"),
+sign_jump("JNS") :- binary_isa("X64").
+
+.decl unsigned_jump(Operation:symbol)
+
+unsigned_jump("JB"),
+unsigned_jump("JNAE"),
+unsigned_jump("JC"),
+unsigned_jump("JNB"),
+unsigned_jump("JAE"),
+unsigned_jump("JNC"),
+unsigned_jump("JBE"),
+unsigned_jump("JNA"),
+unsigned_jump("JA"),
+unsigned_jump("JNBE"),
+unsigned_jump("JO"),
+unsigned_jump("JNO") :- binary_isa("X64").
+
+// Arithmetic operation semantics
+.decl add_operation(Operation:symbol)
+add_operation("ADD") :- binary_isa("X86") ; binary_isa("X64").
+
+.decl sub_operation(Operation:symbol)
+sub_operation("SUB") :- binary_isa("X64") ; binary_isa("X64").
+
+// Stack operations
+.decl push(EA:address)
+push(EA) :-
+    instruction_get_operation(EA, "PUSH").
+
+.decl pop(EA:address)
+pop(EA) :-
+    instruction_get_operation(EA, "POP").
+
+// Per-opcode typesinking
+.decl typesink_operation(Operation:symbol, Sink:lattice_type)
+typesink_operation(Operation, "int") :- arch.arithmetic_operation(Operation).
+typesink_operation(Operation, "uint") :- arch.logic_operation(Operation).
+
+// Which register to track as the flags
+.decl condition_register(Register:register)
+condition_register("RFLAGS").
+
+// Detialed information about register
+.decl register_info(ChildRegister:register, ParentRegister:register, Start:unsigned, End:unsigned)
+
+register_info("AL", "RAX", 0, 1),
+register_info("AH", "RAX", 1, 2),
+register_info("AX", "RAX", 0, 2),
+register_info("EAX", "RAX", 0, 4),
+register_info("RAX", "RAX", 0, 8),
+
+register_info("BL", "RBX", 0, 1),
+register_info("BH", "RBX", 1, 2),
+register_info("BX", "RBX", 0, 2),
+register_info("EBX", "RBX", 0, 4),
+register_info("RBX", "RBX", 0, 8),
+
+register_info("CL", "RCX", 0, 1),
+register_info("CH", "RCX", 1, 2),
+register_info("CX", "RCX", 0, 2),
+register_info("ECX", "RCX", 0, 4),
+register_info("RCX", "RCX", 0, 8),
+
+register_info("DL", "RDX", 0, 1),
+register_info("DH", "RDX", 1, 2),
+register_info("DX", "RDX", 0, 2),
+register_info("EDX", "RDX", 0, 4),
+register_info("RDX", "RDX", 0, 8),
+
+register_info("BPL", "RBP", 0, 1),
+register_info("BP", "RBP", 0, 2),
+register_info("EBP", "RBP", 0, 4),
+register_info("RBP", "RBP", 0, 8),
+
+register_info("SIL", "RSI", 0, 1),
+register_info("SI", "RSI", 0, 2),
+register_info("ESI", "RSI", 0, 4),
+register_info("RSI", "RSI", 0, 8),
+
+register_info("DIL", "RDI", 0, 1),
+register_info("DI", "RDI", 0, 2),
+register_info("EDI", "RDI", 0, 4),
+register_info("RDI", "RDI", 0, 8),
+
+register_info("SPL", "RSP", 0, 1),
+register_info("SP", "RSP", 0, 2),
+register_info("ESP", "RSP", 0, 4),
+register_info("RSP", "RSP", 0, 8),
+
+register_info("R8B", "R8", 0, 1),
+register_info("R8W", "R8", 0, 2),
+register_info("R8", "R8", 0, 4),
+register_info("R8D", "R8", 0, 8),
+
+register_info("R9B", "R9", 0, 1),
+register_info("R9W", "R9", 0, 2),
+register_info("R9", "R9", 0, 4),
+register_info("R9D", "R9", 0, 8),
+
+register_info("R10B", "R10", 0, 1),
+register_info("R10W", "R10", 0, 2),
+register_info("R10", "R10", 0, 4),
+register_info("R10D", "R10", 0, 8),
+
+register_info("R11B", "R11", 0, 1),
+register_info("R11W", "R11", 0, 2),
+register_info("R11", "R11", 0, 4),
+register_info("R11D", "R11", 0, 8),
+
+register_info("R12B", "R12", 0, 1),
+register_info("R12W", "R12", 0, 2),
+register_info("R12", "R12", 0, 4),
+register_info("R12D", "R12", 0, 8),
+
+register_info("R13B", "R13", 0, 1),
+register_info("R13W", "R13", 0, 2),
+register_info("R13", "R13", 0, 4),
+register_info("R13D", "R13", 0, 8),
+
+register_info("R14B", "R14", 0, 1),
+register_info("R14W", "R14", 0, 2),
+register_info("R14", "R14", 0, 4),
+register_info("R14D", "R14", 0, 8),
+
+register_info("R15B", "R15", 0, 1),
+register_info("R15W", "R15", 0, 2),
+register_info("R15", "R15", 0, 4),
+register_info("R15D", "R15", 0, 8),
+
+register_info("FLAGS", "RFLAGS", 0, 2),
+register_info("EFLAGS", "RFLAGS", 0, 4),
+register_info("RFLAGS", "RFLAGS", 0, 8) :- binary_isa("X64").
+
+register_info("AL", "EAX", 0, 1),
+register_info("AH", "EAX", 1, 2),
+register_info("AX", "EAX", 0, 2),
+register_info("EAX", "EAX", 0, 4),
+
+register_info("BL", "EBX", 0, 1),
+register_info("BH", "EBX", 1, 2),
+register_info("BX", "EBX", 0, 2),
+register_info("EBX", "EBX", 0, 4),
+
+register_info("CL", "ECX", 0, 1),
+register_info("CH", "ECX", 1, 2),
+register_info("CX", "ECX", 0, 2),
+register_info("ECX", "ECX", 0, 4),
+
+register_info("DL", "EDX", 0, 1),
+register_info("DH", "EDX", 1, 2),
+register_info("DX", "EDX", 0, 2),
+register_info("EDX", "EDX", 0, 4),
+
+register_info("BPL", "EBP", 0, 1),
+register_info("BP", "EBP", 0, 2),
+register_info("EBP", "EBP", 0, 4),
+
+register_info("SIL", "ESI", 0, 1),
+register_info("SI", "ESI", 0, 2),
+register_info("ESI", "ESI", 0, 4),
+
+register_info("DIL", "EDI", 0, 1),
+register_info("DI", "EDI", 0, 2),
+register_info("EDI", "EDI", 0, 4),
+
+register_info("SPL", "ESP", 0, 1),
+register_info("SP", "ESP", 0, 2),
+register_info("ESP", "ESP", 0, 4),
+
+register_info("FLAGS", "EFLAGS", 0, 2),
+register_info("EFLAGS", "EFLAGS", 0, 4)  :- binary_isa("X86").
+
+.decl track_register(TrackedRegister:register, Register:register)
+track_register(TrackedRegister, Register) :-
+    register_info(TrackedRegister, Register, _, _).

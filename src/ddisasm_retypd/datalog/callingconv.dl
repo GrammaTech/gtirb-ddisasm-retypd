@@ -1,0 +1,27 @@
+.decl param_register(convention: symbol, reg: register, index: unsigned)
+
+param_register("Microsoft x64", "RCX", 1),
+param_register("Microsoft x64", "RDX", 2),
+param_register("Microsoft x64", "R8", 3),
+param_register("Microsoft x64", "R9", 4):-
+    binary_format("PE"), binary_isa("X64").
+
+param_register("System V AMD64 ABI", "RDI", 1),
+param_register("System V AMD64 ABI", "RSI", 2),
+param_register("System V AMD64 ABI", "RDX", 3),
+param_register("System V AMD64 ABI", "RCX", 4),
+param_register("System V AMD64 ABI", "R8", 5),
+param_register("System V AMD64 ABI", "R9", 6):-
+    binary_format("ELF"), binary_isa("X64").
+
+.decl param_stack(convention: symbol, index: unsigned, direction: symbol)
+
+param_stack("Microsoft x64", 5, "RTL") :-
+    binary_format("PE"), binary_isa("X64").
+
+param_stack("System V AMD64 ABI", 7, "RTL") :-
+    binary_format("ELF"), binary_isa("X64").
+
+.decl return_register(convention: symbol, reg: register)
+return_register("System V AMD64 ABI", "RAX") :-
+    binary_isa("X64").

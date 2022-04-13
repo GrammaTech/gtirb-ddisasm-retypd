@@ -1,0 +1,128 @@
+.decl subtype_reg(func:symbol, ea:address, reg1:register, reg2:register)
+
+// Generate subtype relationships between registers moved between each other,
+// e.g.:
+//     EA: mov Reg_dest, Reg_src
+subtype_reg(Func, EA, Reg_src, Reg_dest) :-
+    instruction_get_operation(EA, Operation),
+    !arch.read_only_operation(Operation),
+
+    // Src
+    register_access(EA, "Reads", Reg_src),
+    !arch.pc_register(Reg_src),
+
+    // Dest
+    register_access(EA, "Writes", Reg_dest),
+    !arch.pc_register(Reg_dest),
+
+    Reg_dest != Reg_src,
+
+    // Find Func
+    block_instruction(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Connect def and used for reg E.g.,
+//   EA_def:  mov Reg, xxx
+//   ...
+//   EA_used: add yyy, Reg
+.decl subtype_def_use(func:symbol, ea1:address, reg1:register, ea2:address)
+subtype_def_use(Func, EA_def, Reg, EA_used):-
+    reg_def_use.def_use(EA_def, Reg_untracked, EA_used),
+    EA_def != EA_used,
+    track_register(Reg_untracked, Reg),
+
+    block_instruction(EA_def, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Generate type sink information for registers at a given EA.
+.decl subtype_reg_typesink(func:symbol, ea:address, reg:register, sink:symbol)
+subtype_reg_typesink(Func, EA, Reg, Sink) :-
+    (
+        typesink(EA, "DEST", Sink),
+        explicit_writes_register(EA, Reg)
+        ;
+        typesink(EA, "SRC", Sink),
+        explicit_reads_register(EA, Reg),
+        !arch.pc_register(Reg)
+    ),
+
+    // Find Func
+    block_instruction(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Memory access subtype relations, e.g. (in the case of Mode="store"):
+//     EA_base_def:   mov Reg, ***
+//     ...
+//     EA:            mov nbyte [Base+Offset], Reg
+.decl subtype_mem_reg(mode:symbol, func:symbol, ea:address, reg:register, base:register, offset:number, nbytes:number)
+.output subtype_mem_reg
+subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
+    arch.mov(EA),
+    memory_access(Mode, EA, Base, Offset, NBytes),
+    (
+        Mode = "load",
+        instruction_get_dest_op(EA, _, RegOp)
+        ;
+        Mode = "store",
+        instruction_get_src_op(EA, _, RegOp)
+    ),
+    op_regdirect(RegOp, TrackedReg),
+    track_register(TrackedReg, Reg),
+
+    block_instruction(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Memory access to type sink relations
+.decl subtype_mem_sink(mode:symbol, func:symbol, ea:address, base:register, offset:number, nbytes:number, sink:lattice_type)
+.output subtype_mem_sink
+subtype_mem_sink(Mode, Func, EA, Base, Offset, NBytes, Sink) :-
+    memory_access(Mode, EA, Base, Offset, NBytes),
+    (
+        Mode="load",
+        typesink(EA, "SRC", Sink)
+        ;
+        Mode="store",
+        typesink(EA, "DEST", Sink)
+    ),
+    block_instruction(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).
+
+// Connect incoming formal arguments to their local uses intraprocedurally
+.decl subtype_param_reg_read(func:symbol, ea_use:address, reg:register, index:unsigned)
+.output subtype_param_reg_read
+subtype_param_reg_read(Func, EA_use, Reg, Index) :-
+    reads_unwritten_argument(Func, EA_use, Reg, Index).
+
+// Connect parameters that are passed from Func to Callee at argument Index
+// without an explicit definition
+.decl subtype_param_pass(func:symbol, callee:symbol, index:unsigned)
+.output subtype_param_pass
+subtype_param_pass(Func, Callee, Index) :-
+    writes_implicit_argument(_, _, Func, Callee, _, Index).
+
+// Connect parameters that are passed from Func to Callee that are defined at
+// EA_def in register Register for argument Index.
+.decl subtype_param_reg_write(func:symbol, ea_def:address, reg:register, callee:symbol, index:unsigned)
+.output subtype_param_reg_write
+subtype_param_reg_write(Func, EA_def, Reg, Callee, Index) :-
+    writes_argument_before_call(Func, EA_def, Reg, Callee, Index).
+
+// Give a subtype relation for the functions that have no returns for a cleaner
+// type output from retypd
+.decl subtype_no_return_val(func:symbol)
+subtype_no_return_val(Func) :-
+    function_symbol(_, Func),
+    !writes_return_value(Func, _).
+
+.decl subtype_called(func:symbol, ea:address, reg:register)
+.output subtype_called
+subtype_called(Func, EA, Reg) :-
+    reg_call(EA, Reg),
+    block_instruction(EA, Block),
+    function_inference.in_function(Block, Func_addr),
+    function_symbol(Func_addr, Func).

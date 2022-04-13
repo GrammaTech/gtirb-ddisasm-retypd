@@ -1,0 +1,72 @@
+// An edge in the call graph
+.decl cfg_edge(src:address, dest:address, conditional:symbol, indirect:symbol, type:symbol)
+.input cfg_edge
+
+// Determine whether there is a call at EA that is a no-return
+.decl no_return_call(EA:address)
+no_return_call(EA) :-
+    arch.call_operation(Op),
+    instruction_get_operation(EA, Op),
+    block_instruction(EA, Block),
+    cfg_edge(Block, _, _, _, "call"),
+    !cfg_edge(Block, _, _, _, "fallthrough").
+
+// Generate pairs of blocks that have local edges to each other
+.decl block_next(source:address, dest:address)
+block_next(Source, Dest) :-
+    block_instruction(Source, SourceBlock),
+    cfg_edge(SourceBlock, Dest, _, _, Label),
+    arch.jump(Source),
+    (
+        Label="fallthrough"
+        ;
+        Label="branch"
+    ).
+
+// Generate a relation which contains a call graph for the program
+.decl call_graph(call_from:symbol, call_to:symbol)
+call_graph(CallFrom, CallTo) :-
+    cfg_edge(BlockFrom, BlockTo, _, _, "call"),
+    function_inference.in_function(BlockFrom, CallFrom_addr),
+    function_symbol(CallFrom_addr, CallFrom),
+    function_inference.in_function(BlockTo, CallTo_addr),
+    function_symbol(CallTo_addr, CallTo).
+
+// Generate a relation which contains functions which can be in eachothers call
+// stacks.
+.decl call_reaches(call_from:symbol, call_to:symbol)
+call_reaches(CallFrom, CallTo) :-
+    call_graph(CallFrom, CallTo)
+    ;
+    call_reaches(CallFrom, CallInt),
+    call_graph(CallInt, CallTo).
+
+// Generate a relation which contains functions which can be in eachothers call
+// stacks without passing through an excluded intermediate function.
+.decl call_reaches_without(call_from:symbol, exclude:symbol, call_to:symbol)
+call_reaches_without(CallFrom, Exclude, CallTo) :-
+    function_symbol(_, Exclude),
+    (
+        call_graph(CallFrom, CallTo)
+        ;
+        call_reaches_without(CallFrom, Exclude, CallInt),
+        CallInt != Exclude,
+        call_graph(CallInt, CallTo)
+    ).
+
+// Generate a relation which contains functions which can be in eachothers call
+// stacks while definitely atleast once passing through an intermediate
+// function.
+.decl call_reaches_with(call_from:symbol, call_mid:symbol, call_to:symbol)
+call_reaches_with(CallFrom, CallMid, CallTo) :-
+    call_reaches(CallFrom, CallTo),
+    function_symbol(_, CallMid),
+    !call_reaches_without(CallFrom, CallMid, CallTo).
+
+// Generate a relation which contains edges in an intraprocedural graph of
+// instructions
+.decl next_instruction(ea_before:address, ea_after:address)
+next_instruction(EA_before, EA_after) :-
+    local_next(EA_before, EA_after)
+    ;
+    block_next(EA_before, EA_after).

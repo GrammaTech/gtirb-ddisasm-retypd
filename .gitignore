@@ -1,0 +1,22 @@
+# Souffle and Python generated file
+build/
+*.cpp
+*.csv
+*.facts
+__pycache__
+*.egg-info
+venv
+.vscode/
+.pytest_cache/
+
+# Intermediate results
+*.gtirb
+*.S
+*.dot
+*.png
+
+# Test files
+tests/binaries/*
+tests/gtirb/*.gtirb
+
+!.gitkeep

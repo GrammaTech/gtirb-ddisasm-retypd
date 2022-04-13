@@ -1,0 +1,6 @@
+.type register <: symbol
+.type address <: unsigned
+.type operand_code <: unsigned
+.type operand_index <: unsigned
+
+.type lattice_type <: symbol

@@ -1,0 +1,176 @@
+.decl block_instruction(EA:address, Block:address)
+.input block_instruction
+
+.decl instruction_read_access(EA:address, reg:register)
+.input instruction_read_access
+
+.decl instruction_write_access(EA:address, reg:register)
+.input instruction_write_access
+
+.decl explicit_writes_register(ea:address, reg:register)
+explicit_writes_register(EA, Reg) :-
+    block_instruction(EA, _),
+    instruction_get_dest_op(EA, _, Op),
+    op_regdirect(Op, TrackedReg),
+    track_register(TrackedReg, Reg).
+
+.decl explicit_reads_register(ea:address, reg:register)
+explicit_reads_register(EA, Reg) :-
+    block_instruction(EA, _),
+    instruction_get_src_op(EA, _, Op),
+    (
+        op_regdirect(Op, TrackedRegister)
+        ;
+        op_indirect(Op, _, TrackedRegister, _, _, _, _)
+        ;
+        op_indirect(Op, _, _, TrackedRegister, _, _, _)
+    ),
+    track_register(TrackedRegister, Reg).
+
+.decl register_access(EA:address, mode:symbol, reg:register)
+register_access(EA, Mode, Reg) :-
+    (
+        instruction_read_access(EA, RawReg),
+        Mode="Reads"
+        ;
+        instruction_write_access(EA, RawReg),
+        Mode="Writes"
+    ),
+    track_register(RawReg, Reg).
+
+
+// Generate pairs of instructions that have local edges to each other
+// TODO: This might be useful to upstream into ddisasm
+.decl local_next(EA_src:address, EA_dest:address)
+local_next(EA, EA_next) :-
+    block_instruction(EA, Block),
+    may_fallthrough(EA, EA_next),
+    block_instruction(EA_next, Block).
+
+// Utility relation to determine whether or not an instructions destination is
+// eventually dereferenced
+.decl register_dereferenced(ea:address)
+register_dereferenced(EA) :-
+    block_instruction(EA, _),
+    explicit_writes_register(EA, Reg),
+    reg_def_use.def_use(EA, Reg, EA_used),
+    (
+        data_access(EA_used, _, _, Reg, _, _, _, _)
+        ;
+        !data_access(EA_used, _, _, Reg, _, _, _, _),
+        instruction_get_src_op(EA_used, _, UsedSrcOp),
+        op_regdirect(UsedSrcOp, TrackedReg),
+        track_register(TrackedReg, Reg),
+        register_dereferenced(EA_used)
+    ).
+
+// Determine pairs of instructions that compare two numbers and then jump or a
+// conditional move based on the set flags.
+.decl compare_and_conditional(EA_cmp:address, EA_cond:address)
+.output compare_and_conditional
+compare_and_conditional(EA_cmp, EA_cond) :-
+    arch.cmp_operation(CmpOperation),
+    instruction_get_operation(EA_cmp, CmpOperation),
+    condition_register(Reg),
+    reg_def_use.def_use(EA_cmp, Reg, EA_cond),
+    instruction_get_operation(EA_cond, CondOperation),
+    (
+        arch.jump(EA_cond),
+        CondOperation=CondOperation
+        ;
+        arch.conditional(EA_cond),
+        CondOperation=CondOperation
+        ;
+        signed_conditional_move(CondOperation)
+        ;
+        unsigned_conditional_move(CondOperation)
+        ;
+        signed_set_flag(CondOperation)
+    ).
+
+.decl typesink(EA:address, side:symbol, sink:lattice_type)
+
+// Set a type sink for a register written to with an instruction that has a
+// type-revealing opcode. This currently uses the per-architecture opcode
+// tables from ddisasm though this could be significantly improved.
+typesink(EA, "DEST", Sink) :-
+    instruction_get_operation(EA, Op),
+    typesink_operation(Op, Sink),
+    !register_dereferenced(EA).
+
+// Set a type sink for a register that reads from an integer. For now we assume
+// that this is a signed integer, until proven otherwise.
+typesink(EA, "DEST", "int") :-
+    instruction_get_operation(EA, Operation),
+    !arch.read_only_operation(Operation),
+
+    // Source numeral thats not a symbolic
+    instruction_get_src_op(EA, Imm_index, Op),
+    op_immediate(Op, _),
+    !symbolic_operand(EA, Imm_index, _, _),
+
+    // Destination register
+    register_access(EA, "Writes", _).
+
+// Set a type sink for sign and zero extension instructions
+typesink(EA, "DEST", "int") :-
+    instruction_get_operation(EA, Operation),
+    sign_extend(Operation).
+
+typesink(EA, "DEST", "uint") :-
+    instruction_get_operation(EA, Operation),
+    zero_extend(Operation).
+
+// Set a type sink for integers that are compared with eachother with respect
+// to signedness, i.e.:
+//     EA: CMP RAX, 4
+//         JGE label
+typesink(EA, "SRC", Sink) :-
+    instruction_get_operation(EA_cond, Op),
+    (
+        sign_jump(Op),
+        Sink="int"
+        ;
+        signed_conditional_move(Op),
+        Sink="int"
+        ;
+        unsigned_jump(Op),
+        Sink="uint"
+        ;
+        unsigned_conditional_move(Op),
+        Sink="uint"
+        ;
+        unsigned_set_flag(Op),
+        Sink="uint"
+        ;
+        signed_set_flag(Op),
+        Sink="int"
+    ),
+    compare_and_conditional(EA, EA_cond).
+
+// Memory access on a given [base+offset], whether it is a load or a store is
+// determined by Mode.
+// TODO: This is currently used for analyzing stack accesses and other memory
+// accesses. This assumes that theres no stride to the accesses, as arrays are
+// not yet supported. These are intended to be supported in a future release,
+// however for now it assumes Multiplier=1.
+.decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:number)
+
+memory_access(Mode, EA, Base, Offset, as(NBytes, number)) :-
+    block_instruction(EA, _),
+    (
+        instruction_get_src_op(EA, _, IndOp),
+        Mode = "load"
+        ;
+        instruction_get_dest_op(EA, _, IndOp),
+        Mode = "store"
+    ),
+    op_indirect(IndOp, "NONE", Base, "NONE", 1, RawOffset, NBits),
+    NBytes = NBits/8,
+    (
+        stack_pointer_tracking(EA, Base, _),
+        Offset=RawOffset+1000 // Negative numbers aren't supported
+        ;
+        !stack_pointer_tracking(EA, Base, _),
+        Offset=RawOffset
+    ).
