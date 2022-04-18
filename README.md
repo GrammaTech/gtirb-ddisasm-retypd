@@ -155,3 +155,11 @@ The high level dataflow of this looks like:
    function is said to have. However this may be in conflict with the arguments
    our analysis deduced, since retypd may simplify out a `.in_*` relation that
    causes fewer parameters to be present in the final output.
+
+## Copyright and Acknowledgments
+
+Copyright (C) 2022 GrammaTech, Inc.
+
+This code is licensed under the GPLv3 license. See the LICENSE file in the project root for license terms.
+
+This project is sponsored by the Office of Naval Research, One Liberty Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #N68335-17-C-0700. The content of the information does not necessarily reflect the position or policy of the Government and no official endorsement should be inferred.
