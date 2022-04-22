@@ -31,125 +31,83 @@ filter_name(Filt, Unfilt) :-
 //////////////////////////////////////////////////////////////////////////////
 // subtype constraint generation from subtype relationships generated in
 // subtypes.dl. These are parsable by the retypd constraint aprser.
+.decl subtype_strings(func:symbol, ea:address, constraint:symbol, reason:symbol)
+subtype_strings(Func, EA, Constraint, Reason) :-
+    subtype(Func, $Subtype(Lhs, Rhs), EA, Reason),
+    path_string(Lhs, LhsStr),
+    path_string(Rhs, RhsStr),
+    Constraint=cat(LhsStr, " <= ", RhsStr).
+
 .decl subtype_constraint(func:symbol, constraint:symbol, reason: symbol)
 .output subtype_constraint
 
-// Register-to-register constraints
-subtype_constraint(Func, Constraint, "register-to-register") :-
-    subtype_reg(UFunc, EA, Reg_src, Reg_dest),
-    filter_name(Func, UFunc),
+subtype_constraint(Func, Constraint, Reason) :-
+    subtype_strings(Func, _, Constraint, Reason).
 
-    Src=cat(Reg_src, "_", to_string(EA)),
-    Dest=cat(Reg_dest, "_", to_string(EA)),
-    Constraint=cat(Src," <= ", Dest).
-
-// Register-to-register constraints
-subtype_constraint(Func, Constraint, "def-to-use") :-
-    subtype_def_use(UFunc, EA_src, Reg, EA_dest),
-    filter_name(Func, UFunc),
-
-    Src=cat(Reg, "_", to_string(EA_src)),
-    Dest=cat(Reg, "_", to_string(EA_dest)),
-    Constraint=cat(Src," <= ", Dest).
-
-// Register-to-memory (and vice-versa) constraints
-subtype_constraint(Func, Constraint, "register-to-memory") :-
-    subtype_mem_reg(Mode, UFunc, EA, Reg, Base, Offset, NBytes),
-    filter_name(Func, UFunc),
-    RegSym=cat(Reg, "_", to_string(EA)),
-    MemAccessPath=cat(Mode, ".σ", to_string(NBytes), "@", to_string(Offset)),
-    MemSym=cat(Base, "_", to_string(EA), ".", MemAccessPath),
+.decl all_paths(path:Path)
+all_paths(Path) :-
     (
-        Mode="load",
-        Src=MemSym,
-        Dest=RegSym
+        subtype(_, $Subtype(Path, _), _, _)
         ;
-        Mode="store",
-        Src=RegSym,
-        Dest=MemSym
-    ),
-    Constraint=cat(Src, " <= ", Dest).
+        subtype(_, $Subtype(_, Path), _, _)
+    ).
 
-// Memory-to-sink (and vice-versa) constraints
-subtype_constraint(Func, Constraint, "memory-to-sink") :-
-    subtype_mem_sink(Mode, UFunc, EA, Base, Offset, NBytes, Sink),
-    filter_name(Func, UFunc),
-    MemAccessPath=cat(Mode, ".σ", to_string(NBytes), "@", to_string(Offset)),
-    MemSym=cat(Base, "_", to_string(EA), ".", MemAccessPath),
-    (
-        Mode="load",
-        Src=MemSym,
-        Dest=Sink
-        ;
-        Mode="store",
-        Src=Sink,
-        Dest=MemSym
-    ),
-    Constraint=cat(Src, " <= ", Dest).
+.decl path_string(path:Path, string:symbol)
+path_string([TypeVar, LabelList], Str) :-
+    all_paths([TypeVar, LabelList]),
+    typevar_string(TypeVar, TypeVarStr),
+    labellist_string(LabelList, LabelListStr),
+    Str=cat(TypeVarStr, LabelListStr).
 
+.decl all_typevars(typevar:TypeVar)
+all_typevars(TypeVar) :-
+    all_paths([TypeVar, _]).
 
-// Register-to-register parameter constraints
-// TODO: Stack-passed arguments
-subtype_constraint(Func, Constraint, "register-to-register param read") :-
-    subtype_param_reg_read(UFunc, EA_use, Reg, Index),
-    filter_name(Func, UFunc),
-    Src=cat(Func, ".in_", to_string(Index - 1)),
-    Dest=cat(Reg, "_", to_string(EA_use)),
-    Constraint=cat(Src, " <= ", Dest).
+.decl typevar_string(typevar:TypeVar, string:symbol)
+typevar_string($RegAt(Reg, EA), Str) :-
+    all_typevars($RegAt(Reg, EA)),
+    Str=cat(Reg, "_", to_string(EA)).
 
-subtype_constraint(Func, Constraint, "register-to-register param write") :-
-    subtype_param_reg_write(UFunc, EA_def, Reg, UCallee, Index),
-    filter_name(Func, UFunc),
-    filter_name(Callee, UCallee),
-    Src=cat(Reg, "_", to_string(EA_def)),
-    Dest=cat(Callee, ".in_", to_string(Index - 1)),
-    Constraint=cat(Src, " <= ", Dest).
+typevar_string($Global(Global), Str) :-
+    all_typevars($Global(Global)),
+    filter_name(Global, Filtered),
+    Str=Filtered.
 
-subtype_constraint(Func, Constraint, "register-to-register param implicit") :-
-    subtype_param_pass(UFunc, UCallee, Index),
-    filter_name(Func, UFunc),
-    filter_name(Callee, UCallee),
-    FuncPart=cat(".in_", to_string(Index - 1)),
-    Src=cat(Func, FuncPart),
-    Dest=cat(Callee, FuncPart),
-    Constraint=cat(Src, " <= ", Dest).
+typevar_string($Sink(Sink), Str) :-
+    all_typevars($Sink(Sink)),
+    Str=Sink.
 
-subtype_constraint(Func,  Constraint, "register-to-return write") :-
-    writes_return_value(UFunc, EA_def),
-    filter_name(Func, UFunc),
-    return_register(_, Reg),
-    Src=cat(Reg, "_", to_string(EA_def)),
-    Dest=cat(Func, ".out"),
-    Constraint=cat(Src, " <= ", Dest).
+.decl all_labellists(labellist:LabelList)
+all_labellists(LabelList) :-
+    all_paths([_, LabelList]).
 
+all_labellists(Next) :-
+    all_labellists([_, Next]).
 
-// Register-to-register return constraints
-subtype_constraint(Func, Constraint, "return-to-register read") :-
-    reads_return_value(UCaller, UCallee, EA_use),
-    filter_name(Caller, UCaller),
-    filter_name(Callee, UCallee),
-    return_register(_, Reg),
-    Src=cat(Callee, ".out"),
-    Dest=cat(Reg, "_", to_string(EA_use)),
-    Func=Caller,
-    Constraint=cat(Src, " <= ", Dest).
+.decl labellist_string(labellist:LabelList, string:symbol)
 
-// Register-to-type sink constraint
-subtype_constraint(Func, Constraint, "register-to-sink") :-
-    subtype_reg_typesink(UFunc, EA, Reg, Sink),
-    filter_name(Func, UFunc),
-    Src=cat(Reg, "_", to_string(EA)),
-    Constraint=cat(Src, " <= ", Sink).
+labellist_string(nil, "").
 
-// Functions which have no return values have their outputs subtyped to void to
-// improve their type output from the retypd solver
-subtype_constraint(Func, Constraint, "func-to-void") :-
-    subtype_no_return_val(UFunc),
-    filter_name(Func, UFunc),
-    Constraint=cat("void <= ", Func, ".out").
+labellist_string([Next, Rest], Str) :-
+    all_labellists([Next, Rest]),
+    label_string(Next, LabelStr),
+    labellist_string(Rest, RestStr),
+    Str=cat(LabelStr, RestStr).
 
-subtype_constraint(Func, Constraint, "register-called") :-
-    subtype_called(UFunc, EA, Reg),
-    filter_name(Func, UFunc),
-    Src=cat(Reg, "_", to_string(EA)),
-    Constraint=cat(Src, " <= call").
+.decl all_labels(label:Label)
+all_labels(Label) :-
+    all_labellists([Label, _]).
+
+.decl label_string(label:Label, string:symbol)
+
+label_string($In(Index), Str) :-
+    all_labels($In(Index)),
+    Str=cat(".in_", to_string(Index - 1)).
+
+label_string($Out(), ".out").
+label_string($Store(), ".store").
+label_string($Load(), ".load").
+
+label_string($Deref(Size, Offset), Str) :-
+    all_labels($Deref(Size, Offset)),
+    Str=cat(".σ", to_string(Size), "@", to_string(Offset)).

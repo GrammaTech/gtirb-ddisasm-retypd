@@ -19,13 +19,13 @@ explicit_reads_register(EA, Reg) :-
     block_instruction(EA, _),
     (
         // Source operation reads from a specific register
-    instruction_get_src_op(EA, _, Op),
-    (
-        op_regdirect(Op, TrackedRegister)
-        ;
-        op_indirect(Op, _, TrackedRegister, _, _, _, _)
-        ;
-        op_indirect(Op, _, _, TrackedRegister, _, _, _)
+        instruction_get_src_op(EA, _, Op),
+        (
+            op_regdirect(Op, TrackedRegister)
+            ;
+            op_indirect(Op, _, TrackedRegister, _, _, _, _)
+            ;
+            op_indirect(Op, _, _, TrackedRegister, _, _, _)
         )
         ;
         // Destination operation writes to the dereference of a register, the
@@ -171,9 +171,9 @@ typesink(EA, "SRC", Sink, Reason) :-
 // accesses. This assumes that theres no stride to the accesses, as arrays are
 // not yet supported. These are intended to be supported in a future release,
 // however for now it assumes Multiplier=1.
-.decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:number)
+.decl memory_access(mode:symbol, ea:address, base:register, offset:number, nbytes:unsigned)
 
-memory_access(Mode, EA, Base, Offset, as(NBytes, number)) :-
+memory_access(Mode, EA, Base, Offset, NBytes) :-
     block_instruction(EA, _),
     (
         instruction_get_src_op(EA, _, IndOp),

@@ -4,3 +4,36 @@
 .type operand_index <: unsigned
 
 .type lattice_type <: symbol
+
+// A derived type variable path: the base type variable and the access
+// path labels associated with it
+.type Path = [
+    typeVar: TypeVar,
+    label: LabelList
+]
+
+// A type variable, which may represent multiple different sources of
+// type information in a program
+.type TypeVar =
+    RegAt { reg: register, address: address }
+    | Global { name: symbol }
+    | Sink { sink: lattice_type }
+
+// A list of labels to apply
+.type LabelList = [
+    label: Label,
+    rest: LabelList
+]
+
+// Labels that can be applied in a path
+.type Label =
+    In { index: unsigned }
+    | Out {}
+    | Load {}
+    | Store {}
+    | Deref { size: unsigned, offset: number }
+
+// Constraint for a function
+.type Constraint =
+    Subtype { lhs: Path, rhs: Path }
+    | EmptyConstraint {}
