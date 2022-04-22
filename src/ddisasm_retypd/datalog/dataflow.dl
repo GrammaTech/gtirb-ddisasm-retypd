@@ -17,6 +17,8 @@ explicit_writes_register(EA, Reg) :-
 .decl explicit_reads_register(ea:address, reg:register)
 explicit_reads_register(EA, Reg) :-
     block_instruction(EA, _),
+    (
+        // Source operation reads from a specific register
     instruction_get_src_op(EA, _, Op),
     (
         op_regdirect(Op, TrackedRegister)
@@ -24,6 +26,16 @@ explicit_reads_register(EA, Reg) :-
         op_indirect(Op, _, TrackedRegister, _, _, _, _)
         ;
         op_indirect(Op, _, _, TrackedRegister, _, _, _)
+        )
+        ;
+        // Destination operation writes to the dereference of a register, the
+        // dereference itself involving a read of a specific register
+        instruction_get_dest_op(EA, _, Op),
+        (
+            op_indirect(Op, _, TrackedRegister, _, _, _, _)
+            ;
+            op_indirect(Op, _, _, TrackedRegister, _, _, _)
+        )
     ),
     track_register(TrackedRegister, Reg).
 
