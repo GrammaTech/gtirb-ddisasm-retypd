@@ -99,19 +99,21 @@ compare_and_conditional(EA_cmp, EA_cond) :-
         signed_set_flag(CondOperation)
     ).
 
-.decl typesink(EA:address, side:symbol, sink:lattice_type)
+.decl typesink(EA:address, side:symbol, sink:lattice_type, reason:symbol)
 
 // Set a type sink for a register written to with an instruction that has a
 // type-revealing opcode. This currently uses the per-architecture opcode
 // tables from ddisasm though this could be significantly improved.
-typesink(EA, "DEST", Sink) :-
+typesink(EA, "DEST", Sink, "typesink op") :-
+    block_instruction(EA, _),
     instruction_get_operation(EA, Op),
     typesink_operation(Op, Sink),
     !register_dereferenced(EA).
 
 // Set a type sink for a register that reads from an integer. For now we assume
 // that this is a signed integer, until proven otherwise.
-typesink(EA, "DEST", "int") :-
+typesink(EA, "DEST", "int", "writes an immediate") :-
+    block_instruction(EA, _),
     instruction_get_operation(EA, Operation),
     !arch.read_only_operation(Operation),
 
@@ -124,11 +126,13 @@ typesink(EA, "DEST", "int") :-
     register_access(EA, "Writes", _).
 
 // Set a type sink for sign and zero extension instructions
-typesink(EA, "DEST", "int") :-
+typesink(EA, "DEST", "int", "sign extends") :-
+    block_instruction(EA, _),
     instruction_get_operation(EA, Operation),
     sign_extend(Operation).
 
-typesink(EA, "DEST", "uint") :-
+typesink(EA, "DEST", "uint", "zero extends") :-
+    block_instruction(EA, _),
     instruction_get_operation(EA, Operation),
     zero_extend(Operation).
 
@@ -136,7 +140,8 @@ typesink(EA, "DEST", "uint") :-
 // to signedness, i.e.:
 //     EA: CMP RAX, 4
 //         JGE label
-typesink(EA, "SRC", Sink) :-
+typesink(EA, "SRC", Sink, Reason) :-
+    block_instruction(EA_cond, _),
     instruction_get_operation(EA_cond, Op),
     (
         sign_jump(Op),
@@ -157,7 +162,8 @@ typesink(EA, "SRC", Sink) :-
         signed_set_flag(Op),
         Sink="int"
     ),
-    compare_and_conditional(EA, EA_cond).
+    compare_and_conditional(EA, EA_cond),
+    Reason=cat("does ", Op).
 
 // Memory access on a given [base+offset], whether it is a load or a store is
 // determined by Mode.

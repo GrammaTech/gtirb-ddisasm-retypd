@@ -118,3 +118,7 @@ comment(EA, Comment, "dataflow") :-
 comment(EA, Comment, "dataflow") :-
     reaches_without_write(EA, Reg),
     Comment=cat("reaches_without_write(", to_string(EA), ", ", Reg, ")").
+
+comment(EA, Comment, "sink") :-
+    typesink(EA, Side, Sink, Reason),
+    Comment=cat("typesink(EA=", to_string(EA), ", Side=", Side, ", Sink=", Sink, ", Reason=", Reason,   ")").

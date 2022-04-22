@@ -40,13 +40,17 @@ subtype_def_use(Func, EA_def, Reg, EA_used):-
 .decl subtype_reg_typesink(func:symbol, ea:address, reg:register, sink:symbol)
 subtype_reg_typesink(Func, EA, Reg, Sink) :-
     (
-        typesink(EA, "DEST", Sink),
-        explicit_writes_register(EA, Reg)
+        typesink(EA, "DEST", Sink, _),
+        instruction_get_src_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked)
         ;
-        typesink(EA, "SRC", Sink),
-        explicit_reads_register(EA, Reg),
-        !arch.pc_register(Reg)
+        typesink(EA, "SRC", Sink, _),
+        instruction_get_dest_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked)
     ),
+
+    track_register(Reg_untracked, Reg),
+    !arch.pc_register(Reg),
 
     // Find Func
     block_instruction(EA, Block),
@@ -83,10 +87,14 @@ subtype_mem_sink(Mode, Func, EA, Base, Offset, NBytes, Sink) :-
     memory_access(Mode, EA, Base, Offset, NBytes),
     (
         Mode="load",
-        typesink(EA, "SRC", Sink)
+        typesink(EA, "SRC", Sink, _),
+        lhs = [$RegAt(Base, EA), [$Load(), [$Deref(NBytes, Offset), nil]]],
+        rhs = [$Sink(Sink), nil]
         ;
         Mode="store",
-        typesink(EA, "DEST", Sink)
+        typesink(EA, "DEST", Sink, _),
+        lhs = [$Sink(Sink), nil],
+        rhs = [$RegAt(Base, EA), [$Store(), [$Deref(NBytes, Offset), nil]]]
     ),
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
