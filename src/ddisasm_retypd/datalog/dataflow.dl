@@ -43,9 +43,8 @@ register_access(EA, Mode, Reg) :-
 // TODO: This might be useful to upstream into ddisasm
 .decl local_next(EA_src:address, EA_dest:address)
 local_next(EA, EA_next) :-
-    block_instruction(EA, Block),
-    may_fallthrough(EA, EA_next),
-    block_instruction(EA_next, Block).
+    block_instruction(EA, _),
+    may_fallthrough(EA, EA_next).
 
 // Utility relation to determine whether or not an instructions destination is
 // eventually dereferenced
