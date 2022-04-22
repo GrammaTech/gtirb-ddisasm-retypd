@@ -125,7 +125,13 @@ class DdisasmRetypd:
         constraint_map = defaultdict(ConstraintSet)
 
         for (func, constraint, _) in constraints:
-            constraint_map[func].add(SchemaParser.parse_constraint(constraint))
+            try:
+                constr_object = SchemaParser.parse_constraint(constraint)
+            except ValueError as e:
+                logging.error(f"Failed to parse {constraint}")
+                raise e
+
+            constraint_map[func].add(constr_object)
 
         if add_comments:
             # NOTE: This is a bit of a hack and isn't portable across
