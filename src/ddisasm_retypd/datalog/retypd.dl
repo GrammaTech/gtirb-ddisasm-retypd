@@ -30,7 +30,7 @@ filter_name(Filt, Unfilt) :-
 
 //////////////////////////////////////////////////////////////////////////////
 // subtype constraint generation from subtype relationships generated in
-// subtypes.dl. These are parsable by the retypd constraint aprser.
+// subtypes.dl. These are strings parsable by the retypd constraint parser.
 .decl subtype_strings(func:symbol, ea:address, constraint:symbol, reason:symbol)
 subtype_strings(Func, EA, Constraint, Reason) :-
     subtype(Func, $Subtype(Lhs, Rhs), EA, Reason),
@@ -44,6 +44,14 @@ subtype_strings(Func, EA, Constraint, Reason) :-
 subtype_constraint(Func, Constraint, Reason) :-
     subtype_strings(Func, _, Constraint, Reason).
 
+
+//////////////////////////////////////////////////////////////////////////////
+// These relations are used for flattening the ADT constraints. This is because
+// we directly emit a deeply nested ADT directly in the subtype relation, whose
+// component pieces have not been described in a table, and thus can not be
+// independently enumerated. By flattening them out in these tables we can then
+// iterate through them and convert them to parsable strings for the final
+// constraint string.
 .decl all_paths(path:Path)
 all_paths(Path) :-
     (
@@ -52,16 +60,31 @@ all_paths(Path) :-
         subtype(_, $Subtype(_, Path), _, _)
     ).
 
+.decl all_typevars(typevar:TypeVar)
+all_typevars(TypeVar) :-
+    all_paths([TypeVar, _]).
+
+.decl all_labellists(labellist:LabelList)
+all_labellists(LabelList) :-
+    all_paths([_, LabelList]).
+
+all_labellists(Next) :-
+    all_labellists([_, Next]).
+
+.decl all_labels(label:Label)
+all_labels(Label) :-
+    all_labellists([Label, _]).
+
+
+//////////////////////////////////////////////////////////////////////////////
+// These relations are responsible for taking the flattened output from above
+// and generating the appropriately parsable strings for retypd constraints
 .decl path_string(path:Path, string:symbol)
 path_string([TypeVar, LabelList], Str) :-
     all_paths([TypeVar, LabelList]),
     typevar_string(TypeVar, TypeVarStr),
     labellist_string(LabelList, LabelListStr),
     Str=cat(TypeVarStr, LabelListStr).
-
-.decl all_typevars(typevar:TypeVar)
-all_typevars(TypeVar) :-
-    all_paths([TypeVar, _]).
 
 .decl typevar_string(typevar:TypeVar, string:symbol)
 typevar_string($RegAt(Reg, EA), Str) :-
@@ -77,15 +100,7 @@ typevar_string($Sink(Sink), Str) :-
     all_typevars($Sink(Sink)),
     Str=Sink.
 
-.decl all_labellists(labellist:LabelList)
-all_labellists(LabelList) :-
-    all_paths([_, LabelList]).
-
-all_labellists(Next) :-
-    all_labellists([_, Next]).
-
 .decl labellist_string(labellist:LabelList, string:symbol)
-
 labellist_string(nil, "").
 
 labellist_string([Next, Rest], Str) :-
@@ -94,12 +109,7 @@ labellist_string([Next, Rest], Str) :-
     labellist_string(Rest, RestStr),
     Str=cat(LabelStr, RestStr).
 
-.decl all_labels(label:Label)
-all_labels(Label) :-
-    all_labellists([Label, _]).
-
 .decl label_string(label:Label, string:symbol)
-
 label_string($In(Index), Str) :-
     all_labels($In(Index)),
     Str=cat(".in_", to_string(Index - 1)).
