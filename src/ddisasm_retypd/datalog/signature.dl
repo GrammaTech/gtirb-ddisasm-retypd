@@ -18,7 +18,7 @@ reaches_without_write(EA, Reg) :-
         next_instruction(PrevEA, EA),
         reaches_without_write(PrevEA, Reg)
         ;
-        function_symbol(EA, _)
+        function_inference.function_entry_name(EA, _)
     ).
 
 
@@ -38,12 +38,12 @@ writes_argument_before_call(Caller, EA_def, Reg, Callee, Index) :-
     // ... in function Caller ...
     block_instruction(EA_def, DefBlock),
     function_inference.in_function(DefBlock, Caller_addr),
-    function_symbol(Caller_addr, Caller),
+    function_inference.function_entry_name(Caller_addr, Caller),
 
     // ... that is a CALL operation to Callee
     cfg_edge(DefBlock, UseBlock, _, _, "call"),
     function_inference.in_function(UseBlock, Callee_addr),
-    function_symbol(Callee_addr, Callee).
+    function_inference.function_entry_name(Callee_addr, Callee).
 
 // Determines whether a parameter is used but never defined
 .decl reads_unwritten_argument(func:symbol, ea_def:address, reg:register, index:unsigned)
@@ -55,7 +55,7 @@ reads_unwritten_argument(Func, EA_use, Reg, Index) :-
 
     block_instruction(EA_use, UseBlock),
     function_inference.in_function(UseBlock, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Passes an implicit argument from a callee
 .decl writes_implicit_argument(writer:symbol, ea_def:unsigned, caller:symbol, callee:symbol, ea_use:unsigned, index:unsigned)
@@ -83,7 +83,7 @@ writes_read_return_value(Func, EA_def, EA_use) :-
     // ...defined in function Func...
     block_instruction(EA_def, DefBlock),
     function_inference.in_function(DefBlock, Func_addr),
-    function_symbol(Func_addr, Func),
+    function_inference.function_entry_name(Func_addr, Func),
 
     // ...used in function UseFunc...
     block_instruction(EA_use, UseBlock),
@@ -105,7 +105,7 @@ writes_read_return_value(Func, EA_def, EA_use) :-
 .output write_implicit_return_value
 write_implicit_return_value(Func, ReturnedFunc, EA_ret, EA_use) :-
     // Get a function without a return value...
-    function_symbol(_, Func),
+    function_inference.function_entry_name(_, Func),
     !writes_read_return_value(Func, _, _),
 
     // ... that is called by another function with a return value from
@@ -122,7 +122,7 @@ write_implicit_return_value(Func, ReturnedFunc, EA_ret, EA_use) :-
     // is returned in EA_ret by ReturnedFunc.
     block_instruction(EA_use, UseBlock),
     function_inference.in_function(UseBlock, UseFunc_addr),
-    function_symbol(UseFunc_addr, CalleeFunc),
+    function_inference.function_entry_name(UseFunc_addr, CalleeFunc),
     call_reaches_with(CalleeFunc, Func, ReturnedFunc).
 
 // Determine whether or not a function writes to the register that is used for
@@ -136,7 +136,7 @@ writes_unread_return_value(Func, EA_def) :-
 
     block_instruction(EA_def, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Determine whether or not a function has a return value in a register, and
 // report which instructions are writing those return values.
@@ -158,7 +158,7 @@ reads_implicit_return_value(UseFunc, DefFunc, EA_use) :-
     write_implicit_return_value(DefFunc, _, _, EA_use),
     block_instruction(EA_use, Block),
     function_inference.in_function(Block, UseFunc_addr),
-    function_symbol(UseFunc_addr, UseFunc).
+    function_inference.function_entry_name(UseFunc_addr, UseFunc).
 
 // Determine whether a function reads a return value directly returned by a
 // called function
@@ -168,7 +168,7 @@ reads_direct_return(UseFunc, DefFunc, EA_use) :-
     writes_read_return_value(DefFunc, _, EA_use),
     block_instruction(EA_use, Block),
     function_inference.in_function(Block, UseFunc_addr),
-    function_symbol(UseFunc_addr, UseFunc).
+    function_inference.function_entry_name(UseFunc_addr, UseFunc).
 
 // Detrmine whether a function reads a return value passed by a given function
 .decl reads_return_value(use_func:symbol, def_func:symbol, use_ea:address)

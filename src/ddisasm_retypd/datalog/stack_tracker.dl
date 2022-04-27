@@ -42,7 +42,7 @@ stack_edge(PrevEA, EA, HasPrev) :-
     next_instruction(PrevEA, EA),
     HasPrev = 1
     ;
-    function_symbol(EA, _),
+    function_inference.function_entry_name(EA, _),
     PrevEA = 0,
     HasPrev = 0.
 

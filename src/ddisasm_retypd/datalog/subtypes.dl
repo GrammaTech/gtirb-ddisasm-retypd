@@ -32,7 +32,7 @@ subtype(
     // Find Func
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Connect def and used for reg E.g.,
 //   EA_def:  mov Reg, xxx
@@ -53,7 +53,7 @@ subtype(
 
     block_instruction(EA_def, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Generate type sink information for registers at a given EA.
 subtype(
@@ -81,7 +81,7 @@ subtype(
     // Find Func
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Memory access subtype relations, e.g. (in the case of Mode="store"):
 //     EA_base_def:   mov Reg, ***
@@ -109,7 +109,7 @@ subtype(Func, $Subtype(lhs, rhs), EA, "register-to-memory") :-
 
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Memory access to type sink relations
 subtype(Func, $Subtype(lhs, rhs), EA, "memory-to-sink") :-
@@ -127,7 +127,7 @@ subtype(Func, $Subtype(lhs, rhs), EA, "memory-to-sink") :-
     ),
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).
 
 // Connect incoming formal arguments to their local uses intraprocedurally
 subtype(
@@ -178,7 +178,7 @@ subtype(
     0,
     "func-to-void"
 ) :-
-    function_symbol(_, Func),
+    function_inference.function_entry_name(_, Func),
     !writes_return_value(Func, _).
 
 subtype(
@@ -193,4 +193,4 @@ subtype(
     reg_call(EA, Reg),
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    function_inference.function_entry_name(Func_addr, Func).

@@ -5,7 +5,7 @@ debug_ea_no_subtype(EA, Func, Opcode) :-
     !arch.return(EA),
     instruction_get_operation(EA, Opcode),
     function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func),
+    function_inference.function_entry_name(Func_addr, Func),
     !subtype_strings(_, EA, _, _).
 
 .decl comment(EA:address, comment:symbol, category:symbol)

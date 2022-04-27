@@ -17,7 +17,7 @@
 // Filter the name to prevent retypd constraints containing invalid chars
 .decl filter_name(filtered:symbol, unfiltered:symbol)
 filter_name(Filt, Unfilt) :-
-    function_symbol(Func_addr, Unfilt),
+    function_inference.function_entry_name(Func_addr, Unfilt),
     (
         (contains(".", Unfilt); contains("@", Unfilt)),
         Filt=cat("FUN_", to_string(Func_addr))

@@ -22,9 +22,6 @@
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
 
-.decl function_symbol(ea:address, name:symbol)
-.input function_symbol
-
 .decl reg_call(src:address, reg:register)
 .input reg_call
 
@@ -107,6 +104,9 @@
 .comp abs_function_inference {
     .decl in_function(Block:address, Function:address)
     .input in_function
+
+    .decl function_entry_name(ea:address, name:symbol)
+    .input function_entry_name
 }
 
 .init function_inference = abs_function_inference

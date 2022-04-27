@@ -28,9 +28,9 @@ block_next(Source, Dest) :-
 call_graph(CallFrom, CallTo) :-
     cfg_edge(BlockFrom, BlockTo, _, _, "call"),
     function_inference.in_function(BlockFrom, CallFrom_addr),
-    function_symbol(CallFrom_addr, CallFrom),
+    function_inference.function_entry_name(CallFrom_addr, CallFrom),
     function_inference.in_function(BlockTo, CallTo_addr),
-    function_symbol(CallTo_addr, CallTo).
+    function_inference.function_entry_name(CallTo_addr, CallTo).
 
 // Generate a relation which contains functions which can be in eachothers call
 // stacks.
@@ -45,7 +45,7 @@ call_reaches(CallFrom, CallTo) :-
 // stacks without passing through an excluded intermediate function.
 .decl call_reaches_without(call_from:symbol, exclude:symbol, call_to:symbol)
 call_reaches_without(CallFrom, Exclude, CallTo) :-
-    function_symbol(_, Exclude),
+    function_inference.function_entry_name(_, Exclude),
     (
         call_graph(CallFrom, CallTo)
         ;
@@ -60,7 +60,7 @@ call_reaches_without(CallFrom, Exclude, CallTo) :-
 .decl call_reaches_with(call_from:symbol, call_mid:symbol, call_to:symbol)
 call_reaches_with(CallFrom, CallMid, CallTo) :-
     call_reaches(CallFrom, CallTo),
-    function_symbol(_, CallMid),
+    function_inference.function_entry_name(_, CallMid),
     !call_reaches_without(CallFrom, CallMid, CallTo).
 
 // Generate a relation which contains edges in an intraprocedural graph of
