@@ -29,10 +29,13 @@ def _assign_ir_addresses(ir: gtirb.IR):
             current_addr += bi.size
 
 
-def assembly_to_gtirb(assembly_str: str, isa: gtirb.Module.ISA) -> gtirb.IR:
+def assembly_to_gtirb(
+    assembly_str: str, isa: gtirb.Module.ISA, functions: List[str]
+) -> gtirb.IR:
     """Assemble a string and load the result into a raw GTIRB IR object
     :param assembly_str: String of assembly to be assembled
     :param isa: ISA that the assembly code is
+    :param functions: List of symbols to define as functions
     :returns: Raw GTIRB IR that was generated from the assembly
     """
     output = io.StringIO()
@@ -57,7 +60,18 @@ def assembly_to_gtirb(assembly_str: str, isa: gtirb.Module.ISA) -> gtirb.IR:
     # Delete ELF symbol table information since ddisasm can't handle symbols
     # that are present in the symbols table but not in the auxdata table.
     module = ir.modules[0]
-    del module.aux_data["elfSymbolInfo"]
+
+    symInfo = module.aux_data["elfSymbolInfo"].data
+
+    for symbol in module.symbols:
+        symInfo[symbol.uuid] = (
+            0,
+            "FUNC" if symbol.name in functions else "NOTYPE",
+            "GLOBAL",
+            "DEFAULT",
+            0,
+        )
+
     del module.aux_data["elfSymbolTabIdxInfo"]
 
     return code_locals["ir"]
@@ -81,13 +95,16 @@ def find_ddisasm() -> Path:
     )
 
 
-def assembly_to_ddisasm(assembly_str: str, isa: gtirb.Module.ISA) -> gtirb.IR:
+def assembly_to_ddisasm(
+    assembly_str: str, isa: gtirb.Module.ISA, functions: List[str]
+) -> gtirb.IR:
     """Assemble a string, and then disassemble with ddisasm
     :param assembly_str: Assembly string to assemble
     :param isa: ISA that the assembly is
+    :param functions: List of symbols to define as functions
     :returns: IR output from ddisasm, with souffle relations provided
     """
-    raw_ir = assembly_to_gtirb(assembly_str, isa)
+    raw_ir = assembly_to_gtirb(assembly_str, isa, functions)
 
     with tempfile.TemporaryDirectory() as td_:
         src = Path(td_) / "raw.gtirb"
@@ -141,15 +158,18 @@ class ResultObject:
             ), f"Expected {query} in {table}"
 
 
-def table_test(assembly_str: str, isa: gtirb.Module.ISA):
+def table_test(
+    assembly_str: str, isa: gtirb.Module.ISA, functions: List[str] = []
+):
     """Annotation for a given function which tests ddisasm-retypd's internal
         tables
     :param assembly_str: Assembly string of the program to test
     :param isa: ISA of the program's assembly
+    :param functions: List of symbols to be defined as functions
     """
 
     def wrapper(func):
-        ir = assembly_to_ddisasm(assembly_str, isa)
+        ir = assembly_to_ddisasm(assembly_str, isa, functions)
 
         with tempfile.TemporaryDirectory() as td_:
             td = Path(td_)
