@@ -2,6 +2,10 @@
 .decl cfg_edge(src:address, dest:address, conditional:symbol, indirect:symbol, type:symbol)
 .input cfg_edge
 
+// An edge to an unidentified location in the callgraph
+.decl cfg_edge_to_top(src:address, conditional:symbol, indirect:symbol, type:symbol)
+.input cfg_edge_to_top
+
 // Determine whether there is a call at EA that is a no-return
 .decl no_return_call(EA:address)
 no_return_call(EA) :-
@@ -10,6 +14,16 @@ no_return_call(EA) :-
     block_instruction(EA, Block),
     cfg_edge(Block, _, _, _, "call"),
     !cfg_edge(Block, _, _, _, "fallthrough").
+
+.decl return(EA:address)
+return(EA) :-
+    (
+        cfg_edge(Block, _, _, _, "return")
+        ;
+        cfg_edge_to_top(Block, _, _, "return")
+    ),
+    block_instruction(EA, Block),
+    unconditional_return(EA).
 
 // Generate pairs of blocks that have local edges to each other
 .decl block_next(source:address, dest:address)

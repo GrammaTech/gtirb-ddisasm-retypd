@@ -20,9 +20,15 @@
         !def(EA_from, Object),
         flows_to(EA_from, EA_to).
 
+    // A value Object has a definition at EA_def which is alive at point EA_use
+    .decl reaches(EA_def:address, Object:T, EA_use:address)
+    reaches(EA_def, Object, EA_use) :-
+        def_flows_to(EA_def, _, EA_use, Object).
+
+    // A value Object has a definition at EA_def which is read at point EA_use
     .decl def_use(EA_def:address, Object:T, EA_use:address)
     def_use(EA_def, Object, EA_use) :-
-        def_flows_to(EA_def, _, EA_use, Object),
+        reaches(EA_def, Object, EA_use),
         use(EA_use, Object).
 }
 

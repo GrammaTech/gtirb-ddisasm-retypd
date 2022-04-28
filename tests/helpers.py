@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 from ddisasm_retypd import DdisasmRetypd
 from gtirb_generate_python_code.generate import generate_test_setup
 from gtirb_rewriting import X86Syntax
@@ -147,6 +147,23 @@ class ResultObject:
                 if line != ""
             ]
 
+    def assertNotContains(
+        self, table: str, *queries: List[Tuple[Optional[Any], ...]]
+    ):
+        """Assert that a table does not contain a set of queries
+        :param queries: Tuples to search, where None is a wildcard match
+        """
+        entries = self.results[table]
+        query_strs = [tuple(str(elem) for elem in query) for query in queries]
+
+        for entry in entries:
+            for query in query_strs:
+                assert not all(
+                    lhs == rhs
+                    for lhs, rhs in zip(entry, query)
+                    if rhs is not None
+                ), f"Expected to not find {query}, found {entry}"
+
     def assertContains(self, table: str, *queries: List[Tuple[Any, ...]]):
         """Assert that a table contains a few given queries
         :param table: Table in the datalog program
@@ -156,6 +173,20 @@ class ResultObject:
             assert (
                 tuple(map(str, query)) in self.results[table]
             ), f"Expected {query} in {table}"
+
+    def printTable(self, table: str):
+        """Debug print a table to stdout"""
+        print(table)
+        print("-" * len(table))
+
+        for entry in self.results[table]:
+            print("\t".join(entry))
+
+    def print(self):
+        """Debug print all tables loaded to stdout"""
+        for key in self.results:
+            self.printTable(key)
+            print()
 
 
 def table_test(

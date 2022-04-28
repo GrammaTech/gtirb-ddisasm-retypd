@@ -132,7 +132,8 @@ write_implicit_return_value(Func, ReturnedFunc, EA_ret, EA_use) :-
 writes_unread_return_value(Func, EA_def) :-
     return_register(_, Reg),
     explicit_writes_register(EA_def, Reg),
-    !reg_def_use.def_use(EA_def, _, _),
+    reg_def_use.reaches(EA_def, Reg, EA_to),
+    return(EA_to),
 
     block_instruction(EA_def, Block),
     function_inference.in_function(Block, Func_addr),
