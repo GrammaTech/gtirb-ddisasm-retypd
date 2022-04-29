@@ -39,7 +39,7 @@ import logging
 import re
 
 
-class TestHeader:
+class UnitTestHeader:
     """A header from a test file"""
 
     def __init__(self, header_file: Path, pointer_size: int):
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Test helper for TestHeader, prints translated types"
+        description="Test helper for UnitTestHeader, prints translated types"
     )
     parser.add_argument("file", type=Path, help="Header file to parse")
     parser.add_argument(
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    hf = TestHeader(args.file, args.pointer_size)
+    hf = UnitTestHeader(args.file, args.pointer_size)
 
     for val in hf.namespace.values():
         print(val.pretty_print(val.name))

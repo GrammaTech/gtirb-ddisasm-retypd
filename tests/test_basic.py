@@ -19,7 +19,7 @@
 # necessarily reflect the position or policy of the Government and no
 # official endorsement should be inferred.
 
-from ast_util import TestHeader
+from ast_util import UnitTestHeader
 from ddisasm_retypd import DdisasmRetypd
 from ddisasm_retypd.ddisasm_retypd import print_user_types
 from pathlib import Path
@@ -49,7 +49,9 @@ def pytest_generate_tests(metafunc):
 
         # Assuming x64 for now
         headers = set(gtirb_headers.values())
-        loaded_headers = {header: TestHeader(header, 64) for header in headers}
+        loaded_headers = {
+            header: UnitTestHeader(header, 64) for header in headers
+        }
 
         # Load GTIRB corresponding to the headers
         if "level" in metafunc.fixturenames:
