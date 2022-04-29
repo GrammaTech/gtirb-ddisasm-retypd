@@ -167,6 +167,19 @@ subtype(
 ) :-
     writes_argument_before_call(Func, EA_def, Reg, Callee, Index).
 
+// Connect writes to a return to the function's return path
+subtype(
+    Func,
+    $Subtype(
+        [$Global(Func), [$Out(), nil]],
+        [$RegAt(Reg, EA_def), nil]
+    ),
+    EA_def,
+    "register-to-return"
+) :-
+    writes_return_value(Func, EA_def),
+    explicit_writes_register(EA_def, Reg).
+
 // Give a subtype relation for the functions that have no returns for a cleaner
 // type output from retypd
 subtype(
