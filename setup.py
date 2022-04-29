@@ -37,7 +37,15 @@ setup(
         "gtirb-types",
         "retypd",
     ],
-    extras_require={"test": ["asts", "pkginfo", "pytest", "pytest-cov"]},
+    extras_require={
+        "test": [
+            "asts",
+            "gtirb_generate_python_code",
+            "pkginfo",
+            "pytest",
+            "pytest-cov",
+        ]
+    },
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"": ["datalog/*.dl"]},
