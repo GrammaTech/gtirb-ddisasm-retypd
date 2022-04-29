@@ -100,11 +100,13 @@ compare_and_conditional(EA_cmp, EA_cond) :-
     ).
 
 .decl typesink(EA:address, side:symbol, sink:lattice_type, reason:symbol)
+.output typesink
 
 // Set a type sink for a register written to with an instruction that has a
 // type-revealing opcode. This currently uses the per-architecture opcode
 // tables from ddisasm though this could be significantly improved.
-typesink(EA, "DEST", Sink, "typesink op") :-
+typesink(EA, Side, Sink, "typesink op") :-
+    (Side="DEST" ; Side="SRC"),
     block_instruction(EA, _),
     instruction_get_operation(EA, Op),
     typesink_operation(Op, Sink),
