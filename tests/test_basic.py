@@ -77,43 +77,6 @@ def pytest_generate_tests(metafunc):
             metafunc.parametrize("ir,header", gtirb_loaded)
 
 
-@pytest.mark.commit
-def test_generated_constraints(ir, header, level, tmp_path):
-    dr = DdisasmRetypd(ir, tmp_path)
-    dr._exec_souffle(dr.facts_dir, tmp_path)
-    constraint_map = dr._insert_subtypes()
-    generated_constraints = {
-        str(dtv): derived_constraint
-        for dtv, derived_constraint in constraint_map.items()
-    }
-
-    for (item, header_type) in header.namespace.items():
-        if not isinstance(header_type, FunctionType):
-            continue
-
-        if item not in header.generated_constraints:
-            continue
-
-        if level not in header.generated_constraints[item]:
-            continue
-
-        gt_constraint = header.generated_constraints[item][level]
-        generated_constraint = generated_constraints[item]
-
-        for constraint in gt_constraint:
-            print("-------")
-            print(item)
-            print("Ground Truth")
-            print(gt_constraint)
-            print("Derived ")
-            print(generated_constraint)
-
-            assert constraint in generated_constraint.subtype, (
-                f"Failed to find {constraint} in derived constraint of "
-                f"function {item}"
-            )
-
-
 @pytest.mark.nightly
 def test_derived_constraints(ir, header, tmp_path):
     """Verify that the constraints derived from retypd are valid"""
