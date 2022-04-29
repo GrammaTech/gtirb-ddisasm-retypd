@@ -61,9 +61,12 @@ def get_callgraph(ir: gtirb.IR) -> Dict[str, Set[str]]:
 
     for edge in ir.cfg:
         if edge.label.type == gtirb.Edge.Type.Call:
-            if not isinstance(
-                edge.source, gtirb.ProxyBlock
-            ) and not isinstance(edge.target, gtirb.ProxyBlock):
+            if (
+                not isinstance(edge.source, gtirb.ProxyBlock)
+                and not isinstance(edge.target, gtirb.ProxyBlock)
+                and edge.source in block_to_func
+                and edge.target in block_to_func
+            ):
                 caller_func = block_to_func[edge.source]
                 callee_func = block_to_func[edge.target]
                 caller_name = filter_name(caller_func)

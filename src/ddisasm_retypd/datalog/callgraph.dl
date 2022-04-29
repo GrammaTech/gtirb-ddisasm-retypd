@@ -39,6 +39,7 @@ block_next(Source, Dest) :-
 
 // Generate a relation which contains a call graph for the program
 .decl call_graph(call_from:symbol, call_to:symbol)
+.output call_graph
 call_graph(CallFrom, CallTo) :-
     cfg_edge(BlockFrom, BlockTo, _, _, "call"),
     function_inference.in_function(BlockFrom, CallFrom_addr),

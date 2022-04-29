@@ -35,8 +35,8 @@ comment(EA, Comment, "params") :-
     Comment=cat("writes_read_return_value(Func=", Func, ", EA_def=", to_string(EA), ", EA_use=", to_string(EA_use), ")").
 
 comment(EA, Comment, "params") :-
-    write_implicit_return_value(Func, ReturnedFunc, EA, EA_use),
-    Comment=cat("write_implicit_return_value(Func=", Func, ", ReturnedFunc=", ReturnedFunc, ", EA_ret=", to_string(EA), ", EA_use=", to_string(EA_use), ")").
+    may_pass_implicit_return_value(Func, ReturnedFunc, EA),
+    Comment=cat("may_pass_implicit_return_value(Func=", Func, ", ReturnedFunc=", ReturnedFunc, ", EA_ret=", to_string(EA), ")").
 
 comment(EA, Comment, "params") :-
     writes_unread_return_value(Func, EA),
