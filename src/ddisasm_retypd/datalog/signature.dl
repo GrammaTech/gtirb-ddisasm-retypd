@@ -69,30 +69,6 @@ writes_implicit_argument(Writer, EA_def, Caller, Callee, EA_use, Index) :-
 //////////////////////////////////////////////////////////////////////////////
 // Relations for determining the return value of a function
 
-// Determine whether or not a function has a return value directly written in
-// the function, and is subsequentially read:
-//     EA: mov EAX, 1
-//         ret
-.decl writes_read_return_value(func:symbol, def_ea:address, use_ea:address)
-.output writes_read_return_value
-writes_read_return_value(Func, EA_def, EA_use) :-
-    // A return value is written...
-    reg_def_use.def_use(EA_def, Reg, EA_use),
-    return_register(_, Reg),
-
-    // ...defined in function Func...
-    block_instruction(EA_def, DefBlock),
-    function_inference.in_function(DefBlock, Func_addr),
-    function_inference.function_entry_name(Func_addr, Func),
-
-    // ...used in function UseFunc...
-    block_instruction(EA_use, UseBlock),
-    function_inference.in_function(UseBlock, UseFunc_addr),
-
-    // ...which are different functions.
-    UseFunc_addr != Func_addr.
-
-
 // Determine whether or not a function has a return value that is implicitly
 // passed through a callee of the function, i.e.:
 //     ReturnedFunc:
@@ -106,69 +82,84 @@ writes_read_return_value(Func, EA_def, EA_use) :-
 may_pass_implicit_return_value(Func, ReturnedFunc, EA_ret) :-
     // Get a function without a return value...
     function_inference.function_entry_name(_, Func),
-    !writes_read_return_value(Func, _, _),
-    !writes_unread_return_value(Func, _),
+    !writes_direct_return_value(Func, _),
 
     // ... that is called by another function with a return value from
     // ReturnedFunc (itself or another fallthrough)...
     call_graph(Func, DestFunc),
     (
-        writes_read_return_value(DestFunc, EA_ret, _),
-        ReturnedFunc=DestFunc
-        ;
-        writes_unread_return_value(DestFunc, EA_ret),
+        writes_direct_return_value(DestFunc, EA_ret),
         ReturnedFunc=DestFunc
         ;
         may_pass_implicit_return_value(DestFunc, ReturnedFunc, EA_ret)
     ).
 
+// A def-use analysis based on the register def-use analysis, but also if a
+// function writes/may-implicitly-pass a returned register. This lets us
+// determine reads of a potential return.
+.comp ReturnRegisterDefUse : RegisterDefUse {
+    .override def
+    def(EA, Object) :-
+        // Definition of return reg from call
+        return_register(_, Object),
+        cfg_edge(BlockFrom, BlockTo, _, _, "call"),
+        block_instruction(BlockFrom, EA),
+        arch.call_operation(Op),
+        instruction_get_operation(EA, Op),
+
+        function_inference.in_function(BlockFrom, Func_addr),
+        function_inference.function_entry_name(Func_addr, Func),
+        function_inference.in_function(BlockTo, CalledFunc_addr),
+        function_inference.function_entry_name(CalledFunc_addr, CalledFunc),
+
+        (
+            may_pass_implicit_return_value(Func, CalledFunc, _)
+            ;
+            writes_direct_return_value(CalledFunc, _)
+        )
+        ;
+        // Normal definition
+        register_access(EA, "Writes", Object).
+}
+.init ret_reg_def_use = ReturnRegisterDefUse
+
 // Determine if theres an instruction which has a use of a register that may be
 // implicitly passed via function call
-// TODO: This currently assumes that the implicitly passed value is accessed
-// directly after
-.decl reads_implicit_return_value(func:symbol, called_func:symbol, EA_use:address, reg:register)
-.output reads_implicit_return_value
-reads_implicit_return_value(Func, CalledFunc, EA_use, Reg) :-
+.decl reads_return_value(func:symbol, called_func:symbol, EA_use:address, reg:register)
+.output reads_return_value
+reads_return_value(Func, CalledFunc, EA_use, Reg) :-
     // Find a call from Func to CalledFunc which returns to Func after that
     // call...
     cfg_edge(BlockFrom, BlockTo, _, _, "call"),
-    cfg_edge(BlockFrom, BlockFallthrough, _, _, "fallthrough"),
     function_inference.in_function(BlockFrom, Func_addr),
     function_inference.function_entry_name(Func_addr, Func),
     function_inference.in_function(BlockTo, CalledFunc_addr),
     function_inference.function_entry_name(CalledFunc_addr, CalledFunc),
 
-    // ... if CalledFunc may implicitly return a value in Reg ...
-    may_pass_implicit_return_value(Func, CalledFunc, EA_ret),
-    explicit_writes_register(EA_ret, Reg),
-
-    // ... and if we assume that a read of the implicitly passed value would be
-    // in the block directly after this call, find a read of that value which
-    // wasn't defined within that succeeding block ...
-    block_instruction(BlockFallthrough, EA_fallthrough),
-    register_access(EA_fallthrough, "Reads", Reg),
-
     (
-        // ... either there is no def-use on that read of Reg ...
-        !reg_def_use.def_use(_, Reg, EA_fallthrough)
+        // ... if CalledFunc may implicitly return a value in Reg ...
+        may_pass_implicit_return_value(Func, CalledFunc, EA_ret),
+        explicit_writes_register(EA_ret, Reg)
         ;
-        // ... or there is one thats not in this block (and therefore since we
-        // assume that this is jumped to from the call which we assume writes
-        // Reg, that def-use would be invalid) ...
-        reg_def_use.def_use(EA_spurious_from, Reg, EA_fallthrough),
-        !block_instruction(EA_fallthrough, EA_spurious_from)
+        // ... or if ClalledFunc explicilty writes a return value in Reg ...
+        writes_direct_return_value(CalledFunc, EA_ret),
+        explicit_writes_register(EA_ret, Reg)
     ),
 
-    // ... then the access of Reg at EA_fallthrough is actually a read of the
-    // implicitly passed return value of CalledFunc.
-    EA_use=EA_fallthrough.
+    // ... and theres a def-use from the register implicitly defined in the call
+    // to some address EA_use, as calculated in the return/register def-use
+    // analysis.
+    block_instruction(BlockFrom, EA_def),
+    arch.call_operation(Op),
+    instruction_get_operation(EA_def, Op),
+    ret_reg_def_use.def_use(EA_def, Reg, EA_use).
 
 
 // Determine whether or not a function writes to the register that is used for
 // return values without reading it, this is likely a return value
-.decl writes_unread_return_value(func:symbol, def_ea:address)
-.output writes_unread_return_value
-writes_unread_return_value(Func, EA_def) :-
+.decl writes_direct_return_value(func:symbol, def_ea:address)
+.output writes_direct_return_value
+writes_direct_return_value(Func, EA_def) :-
     return_register(_, Reg),
     explicit_writes_register(EA_def, Reg),
     reg_def_use.reaches(EA_def, Reg, EA_to),
@@ -183,27 +174,7 @@ writes_unread_return_value(Func, EA_def) :-
 .decl writes_return_value(func:symbol, def_ea:address)
 .output writes_return_value
 writes_return_value(Func, EA_def) :-
-    writes_read_return_value(Func, EA_def, _)
-    ;
     may_pass_implicit_return_value(Func, _, EA_def),
-    reads_implicit_return_value(_, Func, _, _)
+    reads_return_value(_, Func, _, _)
     ;
-    writes_unread_return_value(Func, EA_def).
-
-// Determine whether a function reads a return value directly returned by a
-// called function
-.decl reads_direct_return(use_func:symbol, def_func:symbol, use_ea:address)
-.output reads_direct_return
-reads_direct_return(UseFunc, DefFunc, EA_use) :-
-    writes_read_return_value(DefFunc, _, EA_use),
-    block_instruction(EA_use, Block),
-    function_inference.in_function(Block, UseFunc_addr),
-    function_inference.function_entry_name(UseFunc_addr, UseFunc).
-
-// Detrmine whether a function reads a return value passed by a given function
-.decl reads_return_value(use_func:symbol, def_func:symbol, use_ea:address)
-.output reads_return_value
-reads_return_value(UseFunc, DefFunc, EA_use) :-
-    reads_implicit_return_value(UseFunc, DefFunc, EA_use, _)
-    ;
-    reads_direct_return(UseFunc, DefFunc, EA_use).
+    writes_direct_return_value(Func, EA_def).

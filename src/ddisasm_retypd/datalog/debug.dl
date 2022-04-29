@@ -31,20 +31,16 @@ comment(EA, Comment, "params") :-
     Comment=cat("writes_return_value(Func=", Func, ", EA=", to_string(EA), ")").
 
 comment(EA, Comment, "params") :-
-    writes_read_return_value(Func, EA, EA_use),
-    Comment=cat("writes_read_return_value(Func=", Func, ", EA_def=", to_string(EA), ", EA_use=", to_string(EA_use), ")").
-
-comment(EA, Comment, "params") :-
     may_pass_implicit_return_value(Func, ReturnedFunc, EA),
     Comment=cat("may_pass_implicit_return_value(Func=", Func, ", ReturnedFunc=", ReturnedFunc, ", EA_ret=", to_string(EA), ")").
 
 comment(EA, Comment, "params") :-
-    writes_unread_return_value(Func, EA),
-    Comment=cat("writes_unread_return_value(Func=", Func, ", EA_def=", to_string(EA), ")").
+    writes_direct_return_value(Func, EA),
+    Comment=cat("writes_direct_return_value(Func=", Func, ", EA_def=", to_string(EA), ")").
 
 comment(EA, Comment, "params") :-
-    reads_return_value(Caller, Callee, EA),
-    Comment=cat("reads_return_value(Caller=", Caller, ", Callee=", Callee, ", EA_use=", to_string(EA)).
+    reads_return_value(Caller, Callee, EA, Reg),
+    Comment=cat("reads_return_value(Caller=", Caller, ", Callee=", Callee, ", EA_use=", to_string(EA), ", Reg=", Reg, ")").
 
 comment(EA, Comment, "stack") :-
     stack_pointer_tracking(EA, Reg, Depth),
