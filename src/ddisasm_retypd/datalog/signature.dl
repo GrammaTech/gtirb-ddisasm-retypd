@@ -115,6 +115,7 @@ may_pass_implicit_return_value(Func, ReturnedFunc, EA_ret) :-
         (
             may_pass_implicit_return_value(Func, CalledFunc, _)
             ;
+            Func=Func,
             writes_direct_return_value(CalledFunc, _)
         )
         ;
