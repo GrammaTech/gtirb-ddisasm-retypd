@@ -132,3 +132,69 @@ def test_reaches_without_write(result):
         (0x4006, "RBX"),
         (0x4007, "RCX"),
     )
+
+
+@pytest.mark.commit
+@table_test(
+    """
+    x:
+    mov RAX, RSI
+    add RAX, RDI
+    ret
+
+    y:
+    mov RSI, 0
+    mov RDI, 0
+    call x
+    ret
+    """,
+    gtirb.Module.ISA.X64,
+    functions=["x", "y"],
+)
+def test_basic_arguments(result):
+    """Test that handling arguments that are directly passed between functions
+    can be computed correctly
+    """
+    result.assertContains(
+        "writes_argument_before_call",
+        ("y", 0x400E, "RDI", "x", 1),
+        ("y", 0x4007, "RSI", "x", 2),
+    )
+
+    result.assertContains(
+        "reads_unwritten_argument",
+        ("x", 0x4000, "RSI", 2),
+        ("x", 0x4003, "RDI", 1),
+    )
+
+
+@pytest.mark.commit
+@table_test(
+    """
+    x:
+    mov RAX, RSI
+    add RAX, RDI
+    ret
+
+    y:
+    call x
+    ret
+
+    z:
+    mov RSI, 0
+    mov RDI, 0
+    call y
+    ret
+    """,
+    gtirb.Module.ISA.X64,
+    functions=["x", "y", "z"],
+)
+def test_implicit_arguments(result):
+    """Test that arguments implicitly passed between functions in regsiters are
+    computed correctly
+    """
+    result.assertContains(
+        "writes_implicit_argument",
+        ("z", 0x400D, "y", "x", 0x4000, 2),
+        ("z", 0x4014, "y", "x", 0x4003, 1),
+    )
