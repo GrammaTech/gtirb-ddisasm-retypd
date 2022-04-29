@@ -101,3 +101,34 @@ def test_return_implicit(result):
 def test_return_reads_direct(result):
     """Test that return value reads are calculated correctly"""
     result.assertContains("reads_return_value", ("y", "x", 0x400B, "RAX"))
+
+
+@pytest.mark.commit
+@table_test(
+    """
+    push RCX
+    mov EAX, EBX
+    add RBX, RAX
+    pop RCX
+    ret
+    """,
+    gtirb.Module.ISA.X64,
+)
+def test_reaches_without_write(result):
+    """Test that reaches_without_write computes values correctly"""
+    result.printTable("reaches_without_write")
+    result.assertContains(
+        "reaches_without_write",
+        (0x4000, "RAX"),
+        (0x4000, "RBX"),
+        (0x4000, "RCX"),
+        (0x4001, "RBX"),
+        (0x4001, "RCX"),
+        (0x4003, "RCX"),
+    )
+    result.assertNotContains(
+        "reaches_without_write",
+        (0x4003, "RAX"),
+        (0x4006, "RBX"),
+        (0x4007, "RCX"),
+    )

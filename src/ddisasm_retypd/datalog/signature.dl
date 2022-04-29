@@ -5,18 +5,14 @@
 // a write to it. This doesn't necessarily mean on *all* paths it is unwritten
 // but there is *at least one* path where it is unwritten.
 .decl reaches_without_write(ea:address, reg:register)
+.output reaches_without_write
 reaches_without_write(EA, Reg) :-
     block_instruction(EA, _),
     track_register(_, Reg),
     (
-        !register_access(EA, "Writes", Reg)
-        ;
-        register_access(EA, "Writes", Reg),
-        register_access(EA, "Reads", Reg)
-    ),
-    (
         next_instruction(PrevEA, EA),
-        reaches_without_write(PrevEA, Reg)
+        reaches_without_write(PrevEA, Reg),
+        !register_access(PrevEA, "Writes", Reg)
         ;
         function_inference.function_entry_name(EA, _)
     ).
