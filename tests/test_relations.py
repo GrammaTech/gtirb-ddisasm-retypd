@@ -66,6 +66,9 @@ z:
     functions=["x", "y", "z"],
 )
 def test_return_implicit(result):
+    """Test that implicit return values are calculated correctly and that reads
+    to them are detected as well
+    """
     result.printTable("reads_implicit_return_value")
     result.assertContains("writes_return_value", ("x", 0x4000))
     result.assertContains("call_graph", ("y", "x"))
