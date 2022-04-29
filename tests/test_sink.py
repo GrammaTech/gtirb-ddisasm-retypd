@@ -42,6 +42,13 @@ def test_sink_logic_operation_3(result):
 
 
 @pytest.mark.commit
+@table_test("xor RAX, RAX", gtirb.Module.ISA.X64)
+def test_sink_logic_operation_4(result):
+    """Test that XOR zero-idiom gets type sinked correctly"""
+    result.assertNotContains("typesink", (0x4000, None, None, None))
+
+
+@pytest.mark.commit
 @table_test("add RAX, RBX", gtirb.Module.ISA.X64)
 def test_sink_artihmetic_operation_1(result):
     """Test that addition gets type sinked correctly"""
@@ -83,7 +90,6 @@ def test_sink_artihmetic_operation_3(result):
 )
 def test_sink_sign_compare_jump(result):
     """Test that compare/signed jump idioms gets type sinked correctly"""
-    result.printTable("typesink")
     result.assertContains("typesink", (0x4000, "SRC", "int", "does JGE"))
 
 
@@ -99,5 +105,4 @@ def test_sink_sign_compare_jump(result):
 )
 def test_sink_unsigned_compare_jump(result):
     """Test that compare/unsigned jump idioms gets type sinked correctly"""
-    result.printTable("typesink")
     result.assertContains("typesink", (0x4000, "SRC", "uint", "does JAE"))
