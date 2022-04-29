@@ -103,7 +103,7 @@ test_package:
   stage: test-package
   before_script: []
   script:
-    - for f in dist/*.whl; do python3 -m pip install $f; done
+    - for f in dist/*.whl; do python3 -m pip install --pre --extra-index-url=$EXTRA_INDEX_URL $f; done
 
 export_external:
   stage: deploy
