@@ -108,6 +108,7 @@ pop(EA) :-
 
 // Signed opcodes
 typesink_operation("ADD", "int"),
+typesink_operation("SUB", "int"),
 typesink_operation("INC", "int"),
 typesink_operation("DEC", "int"),
 typesink_operation("IMUL", "int"),
