@@ -106,3 +106,16 @@ def test_sink_sign_compare_jump(result):
 def test_sink_unsigned_compare_jump(result):
     """Test that compare/unsigned jump idioms gets type sinked correctly"""
     result.assertContains("typesink", (0x4000, "SRC", "uint", "does JAE"))
+
+
+@pytest.mark.commit
+@table_test(
+    """
+    cmp EDI,6
+    setb AL
+    """,
+    gtirb.Module.ISA.X64,
+)
+def test_sink_unsigned_flag_set(result):
+    """Test that compare/unsigned jump idioms gets type sinked correctly"""
+    result.assertContains("typesink", (0x4000, "SRC", "uint", "does SETB"))

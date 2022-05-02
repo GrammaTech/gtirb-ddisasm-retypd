@@ -97,6 +97,8 @@ compare_and_conditional(EA_cmp, EA_cond) :-
         unsigned_conditional_move(CondOperation)
         ;
         signed_set_flag(CondOperation)
+        ;
+        unsigned_set_flag(CondOperation)
     ).
 
 // Is an instruction doing XOR Reg, Reg which is a zeroing idiom for registers
@@ -105,8 +107,12 @@ compare_and_conditional(EA_cmp, EA_cond) :-
 is_xor_zero_idiom(EA) :-
     block_instruction(EA, _),
     instruction_get_operation(EA, "XOR"),
-    instruction_get_src_op(EA, 0, Reg),
-    instruction_get_src_op(EA, 1, Reg).
+    instruction_get_src_op(EA, 0, LHSOp),
+    instruction_get_src_op(EA, 1, RHSOp),
+    op_regdirect(LHSOp, LHS_untracked),
+    op_regdirect(RHSOp, RHS_untracked),
+    track_register(LHS_untracked, Reg),
+    track_register(RHS_untracked, Reg).
 
 .decl typesink(EA:address, side:symbol, sink:lattice_type, reason:symbol)
 .output typesink
