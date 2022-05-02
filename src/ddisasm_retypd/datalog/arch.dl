@@ -105,9 +105,27 @@ pop(EA) :-
 
 // Per-opcode typesinking
 .decl typesink_operation(Operation:symbol, Sink:lattice_type)
-typesink_operation(Operation, "int") :- arch.arithmetic_operation(Operation).
+
+// Signed opcodes
+typesink_operation("ADD", "int"),
+typesink_operation("INC", "int"),
+typesink_operation("DEC", "int"),
+typesink_operation("IMUL", "int"),
+typesink_operation("SAR", "int"),
+typesink_operation("SAL", "int"),
+typesink_operation("IDIV", "int"),
+// Unsigned opcodes
+typesink_operation("SHL", "uint"),
+typesink_operation("SHR", "uint"),
+typesink_operation("ROR", "uint"),
+typesink_operation("ROL", "uint"),
+typesink_operation("RCR", "uint"),
+typesink_operation("RCL", "uint"),
+typesink_operation("SHR", "uint"),
+typesink_operation("SHL", "uint"),
 typesink_operation("AND", "uint"),
 typesink_operation("OR", "uint"),
+typesink_operation("NOT", "uint"),
 typesink_operation("XOR", "uint") :- binary_isa("X86") ; binary_isa("X64").
 
 // Which register to track as the flags
