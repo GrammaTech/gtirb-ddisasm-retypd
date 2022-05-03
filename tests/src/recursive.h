@@ -14,4 +14,6 @@ struct recursive_type {
  *! test_recursive.in_0 ⊑ test_recursive.in_0.store.σ8@8
  *! test_recursive.in_0.store.σ8@8.store.σ8@8 ⊑ test_recursive.in_0.store.σ8@8
  */
-void test_recursive(struct recursive_type* type);
+void test_recursive_store(struct recursive_type* type);
+
+int test_recursive_load(struct recursive_type* type);

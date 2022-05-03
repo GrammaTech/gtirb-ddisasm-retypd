@@ -107,12 +107,9 @@ compare_and_conditional(EA_cmp, EA_cond) :-
 is_xor_zero_idiom(EA) :-
     block_instruction(EA, _),
     instruction_get_operation(EA, "XOR"),
-    instruction_get_src_op(EA, 0, LHSOp),
-    instruction_get_src_op(EA, 1, RHSOp),
-    op_regdirect(LHSOp, LHS_untracked),
-    op_regdirect(RHSOp, RHS_untracked),
-    track_register(LHS_untracked, Reg),
-    track_register(RHS_untracked, Reg).
+    instruction_get_src_op(EA, Idx1, Op),
+    instruction_get_src_op(EA, Idx2, Op),
+    Idx1 != Idx2.
 
 .decl typesink(EA:address, side:symbol, sink:lattice_type, reason:symbol)
 .output typesink
@@ -138,10 +135,7 @@ typesink(EA, "DEST", "int", "writes an immediate") :-
     // Source numeral thats not a symbolic
     instruction_get_src_op(EA, Imm_index, Op),
     op_immediate(Op, _),
-    !symbolic_operand(EA, Imm_index, _, _),
-
-    // Destination register
-    register_access(EA, "Writes", _).
+    !symbolic_operand(EA, Imm_index, _, _).
 
 // Set a type sink for sign and zero extension instructions
 typesink(EA, "DEST", "int", "sign extends") :-
