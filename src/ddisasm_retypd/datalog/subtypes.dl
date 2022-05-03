@@ -56,23 +56,19 @@ subtype(
     function_inference.function_entry_name(Func_addr, Func).
 
 // Generate type sink information for registers at a given EA.
-subtype(
-    Func,
-    $Subtype(
-        [$RegAt(Reg, EA), nil],
-        [$Sink(Sink), nil]
-    ),
-    EA,
-    "register-to-sink"
-) :-
+subtype(Func, $Subtype(lhs, rhs), EA, "register-to-sink") :-
     (
         typesink(EA, "DEST", Sink, _),
         instruction_get_dest_op(EA, _, Op),
-        op_regdirect(Op, Reg_untracked)
+        op_regdirect(Op, Reg_untracked),
+        lhs = [$Sink(Sink), nil],
+        rhs = [$RegAt(Reg, EA), nil]
         ;
         typesink(EA, "SRC", Sink, _),
         instruction_get_src_op(EA, _, Op),
-        op_regdirect(Op, Reg_untracked)
+        op_regdirect(Op, Reg_untracked),
+        lhs = [$RegAt(Reg, EA), nil],
+        rhs = [$Sink(Sink), nil]
     ),
 
     track_register(Reg_untracked, Reg),
