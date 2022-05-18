@@ -167,8 +167,8 @@ subtype(
 subtype(
     Func,
     $Subtype(
-        [$Global(Func), [$Out(), nil]],
-        [$RegAt(Reg, EA_def), nil]
+        [$RegAt(Reg, EA_def), nil],
+        [$Global(Func), [$Out(), nil]]
     ),
     EA_def,
     "register-to-return"
