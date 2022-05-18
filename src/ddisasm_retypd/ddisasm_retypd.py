@@ -116,16 +116,22 @@ class DdisasmRetypd:
 
         if "comment" in self._souffle_out and debug_categories is not None:
             for (addr, comment, category) in self._souffle_out["comment"]:
-                if category in debug_categories:
+                if category in debug_categories and addr != "0":
                     offset = self.addr_to_offset(int(addr))
 
                     if offset:
-                        comments[offset].add(comment)
+                        comments[offset].add(comment.replace("σ", "s"))
 
         constraint_map = defaultdict(ConstraintSet)
 
         for (func, constraint, _) in constraints:
-            constraint_map[func].add(SchemaParser.parse_constraint(constraint))
+            try:
+                constr_object = SchemaParser.parse_constraint(constraint)
+            except ValueError as e:
+                logging.error(f"Failed to parse {constraint}")
+                raise e
+
+            constraint_map[func].add(constr_object)
 
         if add_comments:
             # NOTE: This is a bit of a hack and isn't portable across

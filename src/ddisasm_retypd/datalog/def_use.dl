@@ -8,18 +8,17 @@
     // Origin flows to a location To which does not define it. This is the base
     // step that is then built off of by the next rule.
     def_flows_to(EA_origin, EA_from, EA_to, Object) :-
-        def(EA_origin, Object),
-        flows_to(EA_origin, EA_to),
-        !def(EA_to, Object),
-        EA_from=EA_origin.
+        def(EA_from, Object),
+        flows_to(EA_from, EA_to),
+        EA_origin=EA_from.
 
     // A value Object from Origin flows From -> To if Origin defines it, and
     // there exists a definition that flows to From, and From flows to To, which
     // cannot itself kill Object.
     def_flows_to(EA_origin, EA_from, EA_to, Object) :-
         def_flows_to(EA_origin, _, EA_from, Object),
-        flows_to(EA_from, EA_to),
-        !def(EA_to, Object).
+        !def(EA_from, Object),
+        flows_to(EA_from, EA_to).
 
     .decl def_use(EA_def:address, Object:T, EA_use:address)
     def_use(EA_def, Object, EA_use) :-

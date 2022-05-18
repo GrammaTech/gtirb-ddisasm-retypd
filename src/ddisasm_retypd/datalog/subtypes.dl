@@ -1,18 +1,30 @@
-.decl subtype_reg(func:symbol, ea:address, reg1:register, reg2:register)
+.decl subtype(func:symbol, constraint:Constraint, EA:address, reason:symbol)
+.output subtype
 
 // Generate subtype relationships between registers moved between each other,
 // e.g.:
 //     EA: mov Reg_dest, Reg_src
-subtype_reg(Func, EA, Reg_src, Reg_dest) :-
-    instruction_get_operation(EA, Operation),
-    !arch.read_only_operation(Operation),
+subtype(
+    Func,
+    $Subtype(
+        [$RegAt(Reg_src, EA), nil],
+        [$RegAt(Reg_dest, EA), nil]
+    ),
+    EA,
+    "register-to-register"
+) :-
+    arch.mov(EA),
 
     // Src
-    register_access(EA, "Reads", Reg_src),
+    instruction_get_src_op(EA, _, SrcOp),
+    op_regdirect(SrcOp, SrcReg_untracked),
+    track_register(SrcReg_untracked, Reg_src),
     !arch.pc_register(Reg_src),
 
     // Dest
-    register_access(EA, "Writes", Reg_dest),
+    instruction_get_dest_op(EA, _, DestOp),
+    op_regdirect(DestOp, DestReg_untracked),
+    track_register(DestReg_untracked, Reg_dest),
     !arch.pc_register(Reg_dest),
 
     Reg_dest != Reg_src,
@@ -26,8 +38,15 @@ subtype_reg(Func, EA, Reg_src, Reg_dest) :-
 //   EA_def:  mov Reg, xxx
 //   ...
 //   EA_used: add yyy, Reg
-.decl subtype_def_use(func:symbol, ea1:address, reg1:register, ea2:address)
-subtype_def_use(Func, EA_def, Reg, EA_used):-
+subtype(
+    Func,
+    $Subtype(
+        [$RegAt(Reg, EA_def), nil],
+        [$RegAt(Reg, EA_used), nil]
+    ),
+    EA_def,
+    "def-to-use"
+) :-
     reg_def_use.def_use(EA_def, Reg_untracked, EA_used),
     EA_def != EA_used,
     track_register(Reg_untracked, Reg),
@@ -37,16 +56,27 @@ subtype_def_use(Func, EA_def, Reg, EA_used):-
     function_symbol(Func_addr, Func).
 
 // Generate type sink information for registers at a given EA.
-.decl subtype_reg_typesink(func:symbol, ea:address, reg:register, sink:symbol)
-subtype_reg_typesink(Func, EA, Reg, Sink) :-
-    (
-        typesink(EA, "DEST", Sink),
-        explicit_writes_register(EA, Reg)
-        ;
-        typesink(EA, "SRC", Sink),
-        explicit_reads_register(EA, Reg),
-        !arch.pc_register(Reg)
+subtype(
+    Func,
+    $Subtype(
+        [$RegAt(Reg, EA), nil],
+        [$Sink(Sink), nil]
     ),
+    EA,
+    "register-to-sink"
+) :-
+    (
+        typesink(EA, "DEST", Sink, _),
+        instruction_get_src_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked)
+        ;
+        typesink(EA, "SRC", Sink, _),
+        instruction_get_dest_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked)
+    ),
+
+    track_register(Reg_untracked, Reg),
+    !arch.pc_register(Reg),
 
     // Find Func
     block_instruction(EA, Block),
@@ -57,71 +87,109 @@ subtype_reg_typesink(Func, EA, Reg, Sink) :-
 //     EA_base_def:   mov Reg, ***
 //     ...
 //     EA:            mov nbyte [Base+Offset], Reg
-.decl subtype_mem_reg(mode:symbol, func:symbol, ea:address, reg:register, base:register, offset:number, nbytes:number)
-.output subtype_mem_reg
-subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
+// subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
+subtype(Func, $Subtype(lhs, rhs), EA, "register-to-memory") :-
     arch.mov(EA),
     memory_access(Mode, EA, Base, Offset, NBytes),
     (
-        Mode = "load",
-        instruction_get_dest_op(EA, _, RegOp)
+        Mode="load",
+        instruction_get_dest_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked),
+        track_register(Reg_untracked, Reg),
+        lhs = [$RegAt(Base, EA), [$Load(), [$Deref(NBytes, Offset), nil]]],
+        rhs = [$RegAt(Reg, EA), nil]
         ;
-        Mode = "store",
-        instruction_get_src_op(EA, _, RegOp)
+        Mode="store",
+        instruction_get_src_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked),
+        track_register(Reg_untracked, Reg),
+        lhs = [$RegAt(Reg, EA), nil],
+        rhs = [$RegAt(Base, EA), [$Store(), [$Deref(NBytes, Offset), nil]]]
     ),
-    op_regdirect(RegOp, TrackedReg),
-    track_register(TrackedReg, Reg),
 
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
 // Memory access to type sink relations
-.decl subtype_mem_sink(mode:symbol, func:symbol, ea:address, base:register, offset:number, nbytes:number, sink:lattice_type)
-.output subtype_mem_sink
-subtype_mem_sink(Mode, Func, EA, Base, Offset, NBytes, Sink) :-
+subtype(Func, $Subtype(lhs, rhs), EA, "memory-to-sink") :-
     memory_access(Mode, EA, Base, Offset, NBytes),
     (
         Mode="load",
-        typesink(EA, "SRC", Sink)
+        typesink(EA, "SRC", Sink, _),
+        lhs = [$RegAt(Base, EA), [$Load(), [$Deref(NBytes, Offset), nil]]],
+        rhs = [$Sink(Sink), nil]
         ;
         Mode="store",
-        typesink(EA, "DEST", Sink)
+        typesink(EA, "DEST", Sink, _),
+        lhs = [$Sink(Sink), nil],
+        rhs = [$RegAt(Base, EA), [$Store(), [$Deref(NBytes, Offset), nil]]]
     ),
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),
     function_symbol(Func_addr, Func).
 
 // Connect incoming formal arguments to their local uses intraprocedurally
-.decl subtype_param_reg_read(func:symbol, ea_use:address, reg:register, index:unsigned)
-.output subtype_param_reg_read
-subtype_param_reg_read(Func, EA_use, Reg, Index) :-
+subtype(
+    Func,
+    $Subtype(
+        [$Global(Func), [$In(Index), nil]],
+        [$RegAt(Reg, EA_use), nil]
+    ),
+    EA_use,
+    "param-to-register"
+) :-
     reads_unwritten_argument(Func, EA_use, Reg, Index).
 
 // Connect parameters that are passed from Func to Callee at argument Index
 // without an explicit definition
-.decl subtype_param_pass(func:symbol, callee:symbol, index:unsigned)
-.output subtype_param_pass
-subtype_param_pass(Func, Callee, Index) :-
+subtype(
+    Func,
+    $Subtype(
+        [$Global(Func), [$In(Index), nil]],
+        [$Global(Callee), [$In(Index), nil]]
+    ),
+    0,
+    "implicit-to-param"
+) :-
     writes_implicit_argument(_, _, Func, Callee, _, Index).
 
 // Connect parameters that are passed from Func to Callee that are defined at
 // EA_def in register Register for argument Index.
-.decl subtype_param_reg_write(func:symbol, ea_def:address, reg:register, callee:symbol, index:unsigned)
-.output subtype_param_reg_write
-subtype_param_reg_write(Func, EA_def, Reg, Callee, Index) :-
+subtype(
+    Func,
+    $Subtype(
+        [$RegAt(Reg, EA_def), nil],
+        [$Global(Callee), [$In(Index), nil]]
+    ),
+    EA_def,
+    "register-to-param"
+) :-
     writes_argument_before_call(Func, EA_def, Reg, Callee, Index).
 
 // Give a subtype relation for the functions that have no returns for a cleaner
 // type output from retypd
-.decl subtype_no_return_val(func:symbol)
-subtype_no_return_val(Func) :-
+subtype(
+    Func,
+    $Subtype(
+        [$Global(Func), [$Out(), nil]],
+        [$Sink("void"), nil]
+    ),
+    0,
+    "func-to-void"
+) :-
     function_symbol(_, Func),
     !writes_return_value(Func, _).
 
-.decl subtype_called(func:symbol, ea:address, reg:register)
-.output subtype_called
-subtype_called(Func, EA, Reg) :-
+subtype(
+    Func,
+    $Subtype(
+        [$RegAt(Reg, EA), nil],
+        [$Sink("call"), nil]
+    ),
+    EA,
+    "register-called"
+) :-
     reg_call(EA, Reg),
     block_instruction(EA, Block),
     function_inference.in_function(Block, Func_addr),

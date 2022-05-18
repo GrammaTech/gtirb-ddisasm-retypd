@@ -106,7 +106,9 @@ pop(EA) :-
 // Per-opcode typesinking
 .decl typesink_operation(Operation:symbol, Sink:lattice_type)
 typesink_operation(Operation, "int") :- arch.arithmetic_operation(Operation).
-typesink_operation(Operation, "uint") :- arch.logic_operation(Operation).
+typesink_operation("AND", "uint"),
+typesink_operation("OR", "uint"),
+typesink_operation("XOR", "uint") :- binary_isa("X86") ; binary_isa("X64").
 
 // Which register to track as the flags
 .decl condition_register(Register:register)
