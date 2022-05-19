@@ -13,7 +13,7 @@ subtype(
     EA,
     "register-to-register"
 ) :-
-    arch.mov(EA),
+    move_instruction(EA),
 
     // Src
     instruction_get_src_op(EA, _, SrcOp),
@@ -85,7 +85,7 @@ subtype(Func, $Subtype(lhs, rhs), EA, "register-to-sink") :-
 //     EA:            mov nbyte [Base+Offset], Reg
 // subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
 subtype(Func, $Subtype(lhs, rhs), EA, "register-to-memory") :-
-    arch.mov(EA),
+    move_instruction(EA),
     memory_access(Mode, EA, Base, Offset, NBytes),
     (
         Mode="load",

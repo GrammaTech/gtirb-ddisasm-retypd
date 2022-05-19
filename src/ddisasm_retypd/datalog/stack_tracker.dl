@@ -82,7 +82,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     (
         arch.reg_arithmetic_operation(EA, Reg, SrcReg, 1, Delta)
         ;
-        arch.mov(EA),
+        move_instruction(EA),
         Delta=0
     ),
     (

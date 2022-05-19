@@ -38,8 +38,8 @@
     .decl pointer_size(N: unsigned)
     .input pointer_size
 
-    .decl mov(EA:address)
-    .input mov
+    .decl move(EA:address)
+    .input move
 
     .decl read_only_operation(Operation:symbol)
     .input read_only_operation
@@ -159,7 +159,7 @@ instruction_get_src_op(EA,2,Op):-
 instruction_get_src_op(EA,Index,Op2):-
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
-    !arch.mov(EA),
+    !arch.move(EA),
     !arch.op_does_not_read_dest_reg(Operation),
     !arch.write_only_operation(Operation).
 

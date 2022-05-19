@@ -60,7 +60,7 @@ local_next(EA, EA_next) :-
 
 // Utility relation to determine whether or not an instructions destination is
 // eventually dereferenced
-.decl register_dereferenced(ea:address)
+.decl register_dereferenced(EA: address)
 register_dereferenced(EA) :-
     block_instruction(EA, _),
     explicit_writes_register(EA, Reg),
@@ -74,6 +74,13 @@ register_dereferenced(EA) :-
         track_register(TrackedReg, Reg),
         register_dereferenced(EA_used)
     ).
+
+// An architecture-generic move instruction
+.decl move_instruction(EA: address)
+move_instruction(EA) :-
+    block_instruction(EA, _),
+    instruction_get_operation(EA, Op),
+    arch.move_operation(Op).
 
 // Determine pairs of instructions that compare two numbers and then jump or a
 // conditional move based on the set flags.
