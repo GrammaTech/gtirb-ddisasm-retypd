@@ -116,7 +116,6 @@ def test_return_reads_direct(result):
 )
 def test_reaches_without_write(result):
     """Test that reaches_without_write computes values correctly"""
-    result.printTable("reaches_without_write")
     result.assertContains(
         "reaches_without_write",
         (0x4000, "RAX"),
