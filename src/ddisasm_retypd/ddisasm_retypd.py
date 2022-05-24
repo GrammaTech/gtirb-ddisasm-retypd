@@ -32,8 +32,9 @@ from ddisasm_retypd.ddisasm import (
     get_arch_sizes,
     get_callgraph,
 )
-from ddisasm_retypd.souffle import execute_souffle
+from ddisasm_retypd.gtirb_read import RetypdGtirbReader
 from ddisasm_retypd.gtirb_write import RetypdGtirbWriter
+from ddisasm_retypd.souffle import execute_souffle
 
 from collections import defaultdict
 from pathlib import Path
@@ -174,6 +175,18 @@ class DdisasmRetypd:
         constraint_map = self._insert_subtypes(
             debug_dir is not None, debug_categories
         )
+
+        # Load gtirb-type information to constraints if possible
+        for module in self.ir.modules:
+            reader = RetypdGtirbReader(module)
+            for name, constraint_set in reader.load_all():
+                if name in constraint_map:
+                    logging.info(
+                        f"Ignoring {name} generated constraints, gtirb-type "
+                        "information is already populated"
+                    )
+                constraint_map[name] = constraint_set
+
         program = Program(CLattice(), {}, constraint_map, self.callgraph)
 
         logging.info("Solving constraints")
@@ -213,7 +226,7 @@ class DdisasmRetypd:
             comments for the output GTIRB
         :returns: Dictionary of DTV to generated C-type
         """
-        addr_size, reg_size = get_arch_sizes(self.ir)
+        addr_size, reg_size = get_arch_sizes(self.ir.modules[0])
         _, sketches = self._solve_constraints(
             debug_dir, compiled, debug_categories
         )
@@ -298,8 +311,10 @@ def main():
     if args.debug_dir is not None:
         print_user_types(type_outs)
 
-    writer = RetypdGtirbWriter(ir.modules[0])
-    writer.add_types(type_outs)
+    for module in ir.modules:
+        writer = RetypdGtirbWriter(module)
+        writer.add_types(type_outs)
+
     ir.save_protobuf(str(args.dest))
 
 
