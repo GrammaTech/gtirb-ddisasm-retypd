@@ -33,7 +33,7 @@ from ddisasm_retypd.ddisasm import (
     get_callgraph,
 )
 from ddisasm_retypd.souffle import execute_souffle
-from ddisasm_retypd.gtirb import RetypdGtirbWriter
+from ddisasm_retypd.gtirb_write import RetypdGtirbWriter
 
 from collections import defaultdict
 from pathlib import Path
