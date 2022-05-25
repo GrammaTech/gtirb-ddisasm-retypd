@@ -91,7 +91,11 @@ class RetypdGtirbReader:
         self.functions = {
             func.uuid: func for func in Function.build_functions(module)
         }
-        self.prototypes = module.aux_data["prototypeTable"].data
+
+        if "prototypeTable" in module.aux_data:
+            self.prototypes = module.aux_data["prototypeTable"].data
+        else:
+            self.prototypes = {}
 
     @classmethod
     def from_path(cls: Type[_T], ir_path: Path) -> List[_T]:
