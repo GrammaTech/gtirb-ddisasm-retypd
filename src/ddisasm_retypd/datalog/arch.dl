@@ -266,3 +266,11 @@ register_info("EFLAGS", "EFLAGS", 0, 4)  :- binary_isa("X86").
 .decl track_register(TrackedRegister:register, Register:register)
 track_register(TrackedRegister, Register) :-
     register_info(TrackedRegister, Register, _, _).
+
+.decl frame_pointer(reg:register)
+frame_pointer("EBP") :- binary_isa("X86").
+frame_pointer("RBP") :- binary_isa("X64").
+
+.decl stack_pointer(reg:register)
+stack_pointer("ESP") :- binary_isa("X86").
+stack_pointer("RSP") :- binary_isa("X64").

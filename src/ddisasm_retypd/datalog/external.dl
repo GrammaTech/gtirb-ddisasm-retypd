@@ -47,12 +47,6 @@
     .decl pc_register(reg:register)
     .input pc_register
 
-    .decl frame_pointer(reg:register)
-    .input frame_pointer
-
-    .decl stack_pointer(reg:register)
-    .input stack_pointer
-
     .decl call_operation(Operation:symbol)
     .input call_operation
 

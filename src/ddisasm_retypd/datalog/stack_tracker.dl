@@ -59,7 +59,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         pop(EA),
         Mult=1
     ),
-    arch.stack_pointer(Reg),
+    stack_pointer(Reg),
     (
         HasPrev = 1,
         stack_pointer_tracking(PrevEA, Reg, PrevDepth)
@@ -93,7 +93,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         ;
         // ... and SrcReg is the implicitly passed stack pointer ...
         HasPrev=0,
-        (arch.stack_pointer(SrcReg) ; arch.frame_pointer(SrcReg)),
+        (stack_pointer(SrcReg) ; frame_pointer(SrcReg)),
         PrevDepth=0
     ),
 
@@ -106,7 +106,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     (
         // Let stack pointers in PUSH/POP be handled by their handler
         (pop(EA) ; push(EA)),
-        !arch.stack_pointer(Reg)
+        !stack_pointer(Reg)
         ;
         // If we're not pushing and popping...
         !pop(EA),
@@ -126,8 +126,8 @@ stack_pointer_tracking(EA, Reg, Depth) :-
             ;
             // ... to something thats not the default initialized stack ...
             HasPrev = 0,
-            !arch.frame_pointer(WrittenReg),
-            !arch.stack_pointer(WrittenReg)
+            !frame_pointer(WrittenReg),
+            !stack_pointer(WrittenReg)
         )
     ),
     (
@@ -138,9 +138,9 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         // ... initialize the frame/stack pointer to Depth = 0
         HasPrev = 0,
         (
-            arch.frame_pointer(Reg)
+            frame_pointer(Reg)
             ;
-            arch.stack_pointer(Reg)
+            stack_pointer(Reg)
         ),
         reaches_without_write(EA, Reg),
         Depth = 0
