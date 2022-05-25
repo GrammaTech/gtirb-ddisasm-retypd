@@ -19,13 +19,13 @@ subtype(
     instruction_get_src_op(EA, _, SrcOp),
     op_regdirect(SrcOp, SrcReg_untracked),
     track_register(SrcReg_untracked, Reg_src),
-    !arch.pc_register(Reg_src),
+    !pc_register(Reg_src),
 
     // Dest
     instruction_get_dest_op(EA, _, DestOp),
     op_regdirect(DestOp, DestReg_untracked),
     track_register(DestReg_untracked, Reg_dest),
-    !arch.pc_register(Reg_dest),
+    !pc_register(Reg_dest),
 
     Reg_dest != Reg_src,
 
@@ -72,7 +72,7 @@ subtype(Func, $Subtype(lhs, rhs), EA, "register-to-sink") :-
     ),
 
     track_register(Reg_untracked, Reg),
-    !arch.pc_register(Reg),
+    !pc_register(Reg),
 
     // Find Func
     block_instruction(EA, Block),
