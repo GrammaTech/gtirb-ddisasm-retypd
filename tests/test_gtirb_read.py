@@ -13,16 +13,19 @@ from gtirb_types import (
     GtirbTypes,
     PointerType,
     IntType,
+    StructType,
     VoidType,
 )
 from retypd.parser import SchemaParser
-from typing import List
+from typing import List, Tuple
 import gtirb
 import pytest
 import uuid
 
 
 class TypesBuilder:
+    """A quick helper utility to generate type objects"""
+
     def __init__(self, module: gtirb.Module):
         self.module = module
         self.functions = {
@@ -48,6 +51,16 @@ class TypesBuilder:
         float_type = FloatType(uuid.uuid4(), self.types, size)
         self.types.map[float_type.uuid] = float_type
         return float_type
+
+    def struct(self, size: int, args: List[Tuple[int, AbstractType]]):
+        struct_type = StructType(
+            uuid.uuid4(),
+            self.types,
+            size,
+            [(offset, field.uuid) for (offset, field) in args],
+        )
+        self.types.map[struct_type.uuid] = struct_type
+        return struct_type
 
     def pointer(self, pointed_to: AbstractType) -> AbstractType:
         ptr_type = PointerType(uuid.uuid4(), self.types, pointed_to.uuid)
@@ -86,7 +99,7 @@ def test_gtirb_type_constraints():
     )
     _, bi = add_text_section(module, address=0x4000)
 
-    for i in range(5):
+    for i in range(7):
         add_function(module, f"test{i + 1}", add_code_block(bi, b"\xCC"))
 
     # Create types
@@ -123,7 +136,25 @@ def test_gtirb_type_constraints():
             ),
         ),
     )
-
+    type_builder.prototype(
+        "test6",
+        type_builder.function(
+            [
+                type_builder.pointer(
+                    type_builder.struct(
+                        8,
+                        [
+                            (0, type_builder.integer(4)),
+                            (4, type_builder.float(4)),
+                        ],
+                    )
+                )
+            ]
+        ),
+    )
+    type_builder.prototype(
+        "test7", type_builder.function([type_builder.integer(4, signed=False)])
+    )
     type_builder.save()
 
     # Generate constraints
@@ -136,10 +167,13 @@ def test_gtirb_type_constraints():
         )
 
     # Validate generated constraints
-    cs_has("test1.in_0 ⊑ uint32", "test1")
+    cs_has("test1.in_0 ⊑ int32", "test1")
     cs_has("void ⊑ test1.out", "test1")
     cs_has("test2.in_0 ⊑ float32", "test2")
-    cs_has("uint32 ⊑ test2.out", "test2")
-    cs_has("test3.in_0.load.σ4@0 ⊑ uint32", "test3")
-    cs_has("test4.in_0.load.σ8@0.load.σ4@0 ⊑ uint32", "test4")
-    cs_has("uint32 ⊑ test5.out.store.σ8@0.store.σ4@0", "test5")
+    cs_has("int32 ⊑ test2.out", "test2")
+    cs_has("test3.in_0.load.σ4@0 ⊑ int32", "test3")
+    cs_has("test4.in_0.load.σ8@0.load.σ4@0 ⊑ int32", "test4")
+    cs_has("int32 ⊑ test5.out.store.σ8@0.store.σ4@0", "test5")
+    cs_has("test6.in_0.load.σ4@0 ⊑ int32", "test6")
+    cs_has("test6.in_0.load.σ4@4 ⊑ float32", "test6")
+    cs_has("test7.in_0 ⊑ uint32", "test7")

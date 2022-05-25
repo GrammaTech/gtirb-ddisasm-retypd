@@ -153,7 +153,7 @@ class RetypdGtirbReader:
                 path = side.deref_path(deref).add_suffix(
                     DerefLabel(size, offset)
                 )
-                self._generate_constraint(path, side, pointed_to, output)
+                self._generate_constraint(path, side, field_type, output)
         else:
             size = self._find_type_size(pointed_to)
             path = side.deref_path(deref).add_suffix(DerefLabel(size, 0))
@@ -174,7 +174,7 @@ class RetypdGtirbReader:
         :param output: Set of constraints to write to
         """
         if isinstance(type_, IntType):
-            signed = "u" if type_.is_signed else ""
+            signed = "u" if not type_.is_signed else ""
             lattice = f"{signed}int{type_.size * 8}"
             lattice_dtv = DerivedTypeVariable(lattice)
             output.add(side.order(over, lattice_dtv))
