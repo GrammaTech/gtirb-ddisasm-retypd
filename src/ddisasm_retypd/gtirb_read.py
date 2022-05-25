@@ -61,6 +61,8 @@ class RetypdGtirbReader:
     """Generate retypd constraints from a GTIRB Module"""
 
     class Side(Enum):
+        """Which side of the subtype a given DTV is on"""
+
         LEFT = "left"
         RIGHT = "right"
 
@@ -80,6 +82,10 @@ class RetypdGtirbReader:
         def deref_path(
             self, deref: DerivedTypeVariable
         ) -> DerivedTypeVariable:
+            """Add a dereference access path label to a given DTV
+            :param deref: Dereferenced DTV
+            :returns: DTV with new access path label appended to it
+            """
             if self == self.LEFT:
                 return deref.add_suffix(LoadLabel.instance())
             else:
@@ -107,12 +113,21 @@ class RetypdGtirbReader:
         return [cls(module) for module in ir.modules]
 
     def _find_type_size(self, type_: AbstractType) -> int:
+        """Determine the size of an abstract type
+        :param type_: Abstract type to get size of
+        :returns: Size in bytes of the type
+        """
         if isinstance(type_, PointerType):
             size, _ = get_arch_sizes(self.module)
             return size
-        elif isinstance(type_, (CharType, FloatType, IntType, UnknownType)):
+        elif isinstance(
+            type_, (CharType, FloatType, IntType, UnknownType, StructType)
+        ):
             return type_.size
+        elif isinstance(type_, VoidType):
+            raise ValueError("Void does not have a size")
         else:
+            # Note structures are not handled here
             raise NotImplementedError()
 
     def _generate_ptr_constraint(
@@ -122,6 +137,12 @@ class RetypdGtirbReader:
         pointer_type: PointerType,
         output: Set[SubtypeConstraint],
     ):
+        """Generate constraints for a type that is a pointer
+        :parma deref: DTV that is the source of this type
+        :param side: Which side of the constraint is this pointer on
+        :param poointer_type: The pointer type object itself
+        :param output: Set of constraints to write to
+        """
         pointed_to = pointer_type.pointed_to
         assert pointed_to is not None
 
@@ -145,6 +166,13 @@ class RetypdGtirbReader:
         type_: AbstractType,
         output: Set[SubtypeConstraint],
     ):
+        """Generate a constraint for derived type variable and its ground truth
+           type object derived from gtirb-types
+        :param over: DTV that is being associated with a given type
+        :param side: Which side of the subtype relation this DTV is on
+        :param type_: The ground truth type of this DTV
+        :param output: Set of constraints to write to
+        """
         if isinstance(type_, IntType):
             signed = "u" if type_.is_signed else ""
             lattice = f"{signed}int{type_.size * 8}"
@@ -167,7 +195,7 @@ class RetypdGtirbReader:
         elif isinstance(type_, UnknownType):
             logging.debug(f"Skipping unknown type of size {type_.size}")
         elif isinstance(type_, (ArrayType, StructType)):
-            raise ValueError("Unable to handle by-value aray/structures")
+            raise ValueError("Unable to handle by-value array/structures")
         elif isinstance(type_, PointerType):
             self._generate_ptr_constraint(over, side, type_, output)
         else:
@@ -179,6 +207,11 @@ class RetypdGtirbReader:
         function_type: FunctionType,
         output: Set[SubtypeConstraint],
     ):
+        """Generate constraints for a given function
+        :param func_name: Name of the function to derive types for
+        :param function_type: The type object of this function
+        :param output: Set to write constraints to
+        """
         for i, arg in enumerate(function_type.argument_types):
             if not arg:
                 continue
@@ -210,6 +243,9 @@ class RetypdGtirbReader:
         return ConstraintSet(constraints)
 
     def load_all(self) -> Dict[str, ConstraintSet]:
+        """Load constraints for all functions with them available
+        :returns: Map of function name to ground truth constraints
+        """
         return {
             self.functions[func].get_name(): self.load_function(func)
             for func in self.prototypes.keys()
