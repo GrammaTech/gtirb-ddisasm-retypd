@@ -179,7 +179,7 @@ class DdisasmRetypd:
         # Load gtirb-type information to constraints if possible
         for module in self.ir.modules:
             reader = RetypdGtirbReader(module)
-            for name, constraint_set in reader.load_all():
+            for name, constraint_set in reader.load_all().items():
                 if name in constraint_map:
                     logging.info(
                         f"Ignoring {name} generated constraints, gtirb-type "

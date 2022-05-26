@@ -16,10 +16,13 @@ from gtirb_types import (
     StructType,
     VoidType,
 )
+from helpers import table_test
 from retypd.parser import SchemaParser
+from retypd.schema import DerivedTypeVariable
 from typing import List, Tuple
 import gtirb
 import pytest
+import retypd.c_types
 import uuid
 
 
@@ -177,3 +180,37 @@ def test_gtirb_type_constraints():
     cs_has("test6.in_0.load.σ4@0 ⊑ int32", "test6")
     cs_has("test6.in_0.load.σ4@4 ⊑ float32", "test6")
     cs_has("test7.in_0 ⊑ uint32", "test7")
+
+
+def generate_propagation_test_types(module: gtirb.Module) -> GtirbTypes:
+    """Generate a prototype for a method called in the test
+    test_gtirb_type_propagation
+    """
+
+    builder = TypesBuilder(module)
+    builder.prototype(
+        "x", builder.function([], builder.pointer(builder.integer(8)))
+    )
+
+    return builder.types
+
+
+@table_test(
+    """
+    x:
+    mov RAX, 0
+    ret
+    """,
+    gtirb.Module.ISA.X64,
+    functions=["x"],
+    type_constructor=generate_propagation_test_types,
+    give_types=True,
+)
+def test_gtirb_type_propagation(result, types):
+    """Validate that when an typed method is called, types are derived
+    correctly
+    """
+    x = types[DerivedTypeVariable("x")]
+    assert len(x.params) == 0
+    assert isinstance(x.return_type, retypd.c_types.PointerType)
+    assert isinstance(x.return_type.target_type, retypd.c_types.IntType)

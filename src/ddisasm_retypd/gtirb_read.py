@@ -220,9 +220,12 @@ class RetypdGtirbReader:
             self._generate_constraint(in_dtv, self.Side.LEFT, arg, output)
 
         ret_type = function_type.return_type
-        assert ret_type is not None
-        out_dtv = DerivedTypeVariable(func_name, [OutLabel.instance()])
-        self._generate_constraint(out_dtv, self.Side.RIGHT, ret_type, output)
+
+        if ret_type:
+            out_dtv = DerivedTypeVariable(func_name, [OutLabel.instance()])
+            self._generate_constraint(
+                out_dtv, self.Side.RIGHT, ret_type, output
+            )
 
     def load_function(self, fn_uuid: uuid.UUID) -> ConstraintSet:
         """Get the constraint set for a given function
