@@ -41,21 +41,25 @@ class TypesBuilder:
         self.prototypes = prototype_aux.data
 
     def void(self) -> AbstractType:
+        """Generate a void type"""
         void = VoidType(uuid.uuid4(), self.types)
         self.types.map[void.uuid] = void
         return void
 
     def integer(self, size: int, signed: bool = True) -> AbstractType:
+        """Generate an integral type"""
         int_type = IntType(uuid.uuid4(), self.types, signed, size)
         self.types.map[int_type.uuid] = int_type
         return int_type
 
     def float(self, size: int) -> AbstractType:
+        """Generate a floating-point type"""
         float_type = FloatType(uuid.uuid4(), self.types, size)
         self.types.map[float_type.uuid] = float_type
         return float_type
 
     def struct(self, size: int, args: List[Tuple[int, AbstractType]]):
+        """Generate a structure type"""
         struct_type = StructType(
             uuid.uuid4(),
             self.types,
@@ -66,11 +70,13 @@ class TypesBuilder:
         return struct_type
 
     def pointer(self, pointed_to: AbstractType) -> AbstractType:
+        """Generate a pointer type"""
         ptr_type = PointerType(uuid.uuid4(), self.types, pointed_to.uuid)
         self.types.map[ptr_type.uuid] = ptr_type
         return ptr_type
 
     def function(self, args: List[AbstractType], ret: AbstractType = None):
+        """Generate a function type"""
         if ret is None:
             ret = self.void()
 
@@ -81,9 +87,11 @@ class TypesBuilder:
         return func
 
     def prototype(self, name: str, func: AbstractType):
+        """Associate a function type with a function object"""
         self.prototypes[self.functions[name].uuid] = func.uuid
 
     def save(self):
+        """Save current values into the GTIRB module"""
         self.types.save()
         # This shouldn't be necessary since we copy by reference, but to be
         # safe
