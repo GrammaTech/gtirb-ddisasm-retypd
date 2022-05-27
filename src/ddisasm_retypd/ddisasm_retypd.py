@@ -58,6 +58,8 @@ class DdisasmRetypd:
         self.callgraph = get_callgraph(ir)
         self.facts_dir = facts_dir
         self.var_set = set()
+        self.lattice = CLattice()
+        self.lattice_ctypes = CLatticeCTypes()
 
     def _exec_souffle(
         self,
@@ -187,7 +189,14 @@ class DdisasmRetypd:
                     )
                 constraint_map[name] = constraint_set
 
-        program = Program(CLattice(), {}, constraint_map, self.callgraph)
+            # Use new lattices with opaque types supported
+            # TODO: This currently re-generates per-module, so prior modules
+            # wont be taken into account. This doesn't really matter right now
+            # since almost all GTIRB is 1-module, but if it ever comes up this
+            # should change.
+            self.lattice, self.lattice_ctypes = reader.generate_lattices()
+
+        program = Program(self.lattice, {}, constraint_map, self.callgraph)
 
         logging.info("Solving constraints")
         loglevel = LogLevel.DEBUG if debug_dir else LogLevel.QUIET
@@ -233,8 +242,8 @@ class DdisasmRetypd:
 
         gen = CTypeGenerator(
             sketches,
-            CLattice(),
-            CLatticeCTypes(),
+            self.lattice,
+            self.lattice_ctypes,
             reg_size,
             addr_size,
             verbose=LogLevel.DEBUG if debug_dir else LogLevel.QUIET,

@@ -38,23 +38,43 @@ from gtirb_types import (
     VoidType,
 )
 from pathlib import Path
+from retypd import c_types
+from retypd.clattice import CLattice, CLatticeCTypes
 from retypd.schema import (
     ConstraintSet,
     DerefLabel,
     DerivedTypeVariable,
+    Lattice,
+    LatticeCTypes,
     LoadLabel,
     InLabel,
     OutLabel,
     StoreLabel,
     SubtypeConstraint,
 )
-from typing import Dict, List, Set, Type, TypeVar
+from typing import Dict, FrozenSet, List, Set, Tuple, Type, TypeVar
 import gtirb
 import logging
 import uuid
 
 
 _T = TypeVar("_T")
+
+
+class OpaqueType(c_types.CType):
+    """A special opaque Retypd CType for holding a gtirb-types UUID for a type
+    with no contents - an opaque type.
+    """
+
+    def __init__(self, type_id: uuid.UUID):
+        self.type_id = type_id
+
+    @property
+    def size(self) -> int:
+        return 0
+
+    def __str__(self) -> str:
+        return f"OPAQUE<{self.type_id}>"
 
 
 class RetypdGtirbReader:
@@ -103,6 +123,8 @@ class RetypdGtirbReader:
         else:
             self.prototypes = {}
 
+        self.opaque_types: Dict[uuid.UUID, DerivedTypeVariable] = {}
+
     @classmethod
     def from_path(cls: Type[_T], ir_path: Path) -> List[_T]:
         """Load the IR object from a specific path
@@ -130,6 +152,29 @@ class RetypdGtirbReader:
             # Note structures are not handled here
             raise NotImplementedError()
 
+    def _generate_opaque_constraint(
+        self,
+        origin: DerivedTypeVariable,
+        side: Side,
+        type_id: uuid.UUID,
+        output: Set[SubtypeConstraint],
+    ):
+        """Generate constraints and new lattice elements for a type whose
+        contents are not known in gtirb-types.
+        :param origin: DTV that is the source of this type
+        :param side: Which side of the constraint this DTV is on
+        :param type_id: UUID of the type that is opaque
+        :param output: Set of constraints to write to
+        """
+        if type_id in self.opaque_types:
+            lattice_dtv = self.opaque_types[type_id]
+        else:
+            lattice_dtv = DerivedTypeVariable(
+                f"opaque_{len(self.opaque_types)}"
+            )
+            self.opaque_types[type_id] = lattice_dtv
+        output.add(side.order(origin, lattice_dtv))
+
     def _generate_ptr_constraint(
         self,
         deref: DerivedTypeVariable,
@@ -144,9 +189,19 @@ class RetypdGtirbReader:
         :param output: Set of constraints to write to
         """
         pointed_to = pointer_type.pointed_to
-        assert pointed_to is not None
+
+        if not pointed_to:
+            self._generate_opaque_constraint(
+                deref, side, pointer_type.uuid, output
+            )
+            return
 
         if isinstance(pointed_to, StructType):
+            if len(pointed_to.fields) == 0:
+                self._generate_opaque_constraint(
+                    deref, side, pointer_type.uuid, output
+                )
+                return
             for (offset, field_type) in pointed_to.fields:
                 assert field_type is not None
                 size = self._find_type_size(field_type)
@@ -253,3 +308,56 @@ class RetypdGtirbReader:
             self.functions[func].get_name(): self.load_function(func)
             for func in self.prototypes.keys()
         }
+
+    def generate_lattices(self) -> Tuple[Lattice, LatticeCTypes]:
+        """Generate Retypd lattices for the currently discovered opaque types
+        :returns: Lattice for retypd and lattice for CTypes
+        """
+        # Add all opaque type DTVs to the C-Lattice which is normally used
+        class GTIRBLattice(CLattice):
+            """CLattice which supports opaque types"""
+
+            _opaque = frozenset(self.opaque_types.values())
+
+            def __init__(self) -> None:
+                super().__init__()
+                # Add edges into lattice and re-compute reverse
+                for dtv in self._opaque:
+                    self.graph.add_edge(dtv, self._top)
+                    self.graph.add_edge(self._bottom, dtv)
+
+                # Recompute _internal after CLattice constructor since graph
+                # wont have opaque nodes and cyclic check will fail
+                self._internal = self._internal | self._opaque
+                self.revgraph = self.graph.reverse()
+
+            @property
+            def atomic_types(self) -> FrozenSet[DerivedTypeVariable]:
+                return self._internal | self._endcaps
+
+            @property
+            def internal_types(self) -> FrozenSet[DerivedTypeVariable]:
+                return self._internal
+
+        class GTIRBLatticeCTypes(CLatticeCTypes):
+            """CTypes Lattice which supports opaque types"""
+
+            lookup = {v: k for k, v in self.opaque_types.items()}
+
+            def atom_to_ctype(self, lower_bound, upper_bound, byte_size):
+                """Override DTV -> CType to support opaque types"""
+                if lower_bound in self.lookup or upper_bound in self.lookup:
+                    element = (
+                        self.lookup.get(lower_bound)
+                        or self.lookup[upper_bound]
+                    )
+
+                    return c_types.PointerType(OpaqueType(element), byte_size)
+
+                return super().atom_to_ctype(
+                    lower_bound, upper_bound, byte_size
+                )
+
+        gtirb_lattice = GTIRBLattice()
+        gtirb_lattice_ctypes = GTIRBLatticeCTypes()
+        return (gtirb_lattice, gtirb_lattice_ctypes)

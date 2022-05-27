@@ -21,6 +21,7 @@
 
 import logging
 from typing import Dict
+from ddisasm_retypd.gtirb_read import OpaqueType
 from gtirb_functions import Function
 from gtirb_types import (
     GtirbTypes,
@@ -132,6 +133,11 @@ class RetypdGtirbWriter:
                 ],
             )
             return self._add_type(ctype, struct)
+        elif isinstance(ctype, OpaqueType):
+            type_id = ctype.type_id
+            unk = StructType(type_id, self.types, 0, [])
+            self.types.map[type_id] = unk
+            return type_id
         else:
             print(f"Failed to translate {type(ctype)}")
             raise NotImplementedError()

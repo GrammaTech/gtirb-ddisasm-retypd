@@ -1,4 +1,4 @@
-from ddisasm_retypd.gtirb_read import RetypdGtirbReader
+from ddisasm_retypd.gtirb_read import RetypdGtirbReader, OpaqueType
 from gtirb_functions import Function
 from gtirb_test_helpers import (
     create_test_module,
@@ -102,7 +102,7 @@ def test_gtirb_type_constraints():
     )
     _, bi = add_text_section(module, address=0x4000)
 
-    for i in range(7):
+    for i in range(8):
         add_function(module, f"test{i + 1}", add_code_block(bi, b"\xCC"))
 
     # Create types
@@ -158,6 +158,12 @@ def test_gtirb_type_constraints():
     type_builder.prototype(
         "test7", type_builder.function([type_builder.integer(4, signed=False)])
     )
+    type_builder.prototype(
+        "test8",
+        type_builder.function(
+            [type_builder.pointer(type_builder.struct(0, []))]
+        ),
+    )
     type_builder.save()
 
     # Generate constraints
@@ -180,6 +186,7 @@ def test_gtirb_type_constraints():
     cs_has("test6.in_0.load.σ4@0 ⊑ int32", "test6")
     cs_has("test6.in_0.load.σ4@4 ⊑ float32", "test6")
     cs_has("test7.in_0 ⊑ uint32", "test7")
+    cs_has("test8.in_0 ⊑ opaque_0", "test8")
 
 
 def generate_propagation_test_types(module: gtirb.Module) -> GtirbTypes:
@@ -214,3 +221,37 @@ def test_gtirb_type_propagation(result, types):
     assert len(x.params) == 0
     assert isinstance(x.return_type, retypd.c_types.PointerType)
     assert isinstance(x.return_type.target_type, retypd.c_types.IntType)
+
+
+def generate_opaque_test_types(module: gtirb.Module) -> GtirbTypes:
+    """Generate a prototype for a method called in the test
+    test_gtirb_type_opaque
+    """
+
+    builder = TypesBuilder(module)
+    builder.prototype(
+        "x", builder.function([], builder.pointer(builder.struct(0, [])))
+    )
+
+    return builder.types
+
+
+@table_test(
+    """
+    x:
+    mov RAX, 0
+    ret
+    """,
+    gtirb.Module.ISA.X64,
+    functions=["x"],
+    type_constructor=generate_opaque_test_types,
+    give_types=True,
+)
+def test_gtirb_type_opaque(result, types):
+    """Validate that when an typed method is called, types are derived
+    correctly
+    """
+    x = types[DerivedTypeVariable("x")]
+    assert len(x.params) == 0
+    assert isinstance(x.return_type, retypd.c_types.PointerType)
+    assert isinstance(x.return_type.target_type, OpaqueType)
