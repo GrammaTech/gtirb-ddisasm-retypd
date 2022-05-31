@@ -33,13 +33,11 @@ writes_argument_before_call(Caller, EA_def, Reg, Callee, Index) :-
 
     // ... in function Caller ...
     block_instruction(EA_def, DefBlock),
-    function_inference.in_function(DefBlock, Caller_addr),
-    function_inference.function_entry_name(Caller_addr, Caller),
+    block_in_function_name(DefBlock, Caller),
 
     // ... that is a CALL operation to Callee
     cfg_edge(DefBlock, UseBlock, _, _, "call"),
-    function_inference.in_function(UseBlock, Callee_addr),
-    function_inference.function_entry_name(Callee_addr, Callee).
+    block_in_function_name(UseBlock, Callee).
 
 // Determines whether a parameter is used but never defined
 .decl reads_unwritten_argument(func:symbol, ea_def:address, reg:register, index:unsigned)
@@ -50,8 +48,7 @@ reads_unwritten_argument(Func, EA_use, Reg, Index) :-
     param_register(_, Reg, Index),
 
     block_instruction(EA_use, UseBlock),
-    function_inference.in_function(UseBlock, Func_addr),
-    function_inference.function_entry_name(Func_addr, Func).
+    block_in_function_name(UseBlock, Func).
 
 // Passes an implicit argument from a callee
 .decl writes_implicit_argument(writer:symbol, ea_def:unsigned, caller:symbol, callee:symbol, ea_use:unsigned, index:unsigned)
@@ -103,10 +100,8 @@ may_pass_implicit_return_value(Func, ReturnedFunc, EA_ret) :-
         arch.call_operation(Op),
         instruction_get_operation(EA, Op),
 
-        function_inference.in_function(BlockFrom, Func_addr),
-        function_inference.function_entry_name(Func_addr, Func),
-        function_inference.in_function(BlockTo, CalledFunc_addr),
-        function_inference.function_entry_name(CalledFunc_addr, CalledFunc),
+        block_in_function_name(BlockFrom, Func),
+        block_in_function_name(BlockTo, CalledFunc),
 
         (
             may_pass_implicit_return_value(Func, CalledFunc, _)
@@ -128,10 +123,8 @@ reads_return_value(Func, CalledFunc, EA_use, Reg) :-
     // Find a call from Func to CalledFunc which returns to Func after that
     // call...
     cfg_edge(BlockFrom, BlockTo, _, _, "call"),
-    function_inference.in_function(BlockFrom, Func_addr),
-    function_inference.function_entry_name(Func_addr, Func),
-    function_inference.in_function(BlockTo, CalledFunc_addr),
-    function_inference.function_entry_name(CalledFunc_addr, CalledFunc),
+    block_in_function_name(BlockFrom, Func),
+    block_in_function_name(BlockTo, CalledFunc),
 
     (
         // ... if CalledFunc may implicitly return a value in Reg ...
@@ -163,8 +156,7 @@ writes_direct_return_value(Func, EA_def) :-
     return(EA_to),
 
     block_instruction(EA_def, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_inference.function_entry_name(Func_addr, Func).
+    block_in_function_name(Block, Func).
 
 // Determine whether or not a function has a return value in a register, and
 // report which instructions are writing those return values.

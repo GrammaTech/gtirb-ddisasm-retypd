@@ -42,10 +42,8 @@ block_next(Source, Dest) :-
 .output call_graph
 call_graph(CallFrom, CallTo) :-
     cfg_edge(BlockFrom, BlockTo, _, _, "call"),
-    function_inference.in_function(BlockFrom, CallFrom_addr),
-    function_inference.function_entry_name(CallFrom_addr, CallFrom),
-    function_inference.in_function(BlockTo, CallTo_addr),
-    function_inference.function_entry_name(CallTo_addr, CallTo).
+    block_in_function_name(BlockFrom, CallFrom),
+    block_in_function_name(BlockTo, CallTo).
 
 // Generate a relation which contains functions which can be in eachothers call
 // stacks.
@@ -85,3 +83,10 @@ next_instruction(EA_before, EA_after) :-
     local_next(EA_before, EA_after)
     ;
     block_next(EA_before, EA_after).
+
+// Pre-calculate all pairs of (block, function name) pairs so as not to
+// replicate this logic everywhere.
+.decl block_in_function_name(block:address, name: symbol)
+block_in_function_name(Block, Func) :-
+    function_inference.in_function(Block, Func_addr),
+    function_inference.function_entry_name(Func_addr, Func).
