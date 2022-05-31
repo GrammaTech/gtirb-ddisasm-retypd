@@ -110,10 +110,14 @@ compare_and_conditional(EA_cmp, EA_cond) :-
 
 // Is an instruction doing XOR Reg, Reg which is a zeroing idiom for registers
 // rather than a type-revealing operation
-.decl is_xor_zero_idiom(EA:address)
-is_xor_zero_idiom(EA) :-
+.decl is_zero_idiom(EA:address)
+is_zero_idiom(EA) :-
     block_instruction(EA, _),
-    instruction_get_operation(EA, "XOR"),
+    (
+        instruction_get_operation(EA, "XOR")
+        ;
+        instruction_get_operation(EA, "SUB")
+    ),
     instruction_get_src_op(EA, Idx1, Op),
     instruction_get_src_op(EA, Idx2, Op),
     Idx1 != Idx2.
@@ -129,7 +133,7 @@ typesink(EA, Side, Sink, "typesink op") :-
     block_instruction(EA, _),
     instruction_get_operation(EA, Op),
     typesink_operation(Op, Sink),
-    !is_xor_zero_idiom(EA),
+    !is_zero_idiom(EA),
     !register_dereferenced(EA).
 
 // Set a type sink for a register that reads from an integer. For now we assume

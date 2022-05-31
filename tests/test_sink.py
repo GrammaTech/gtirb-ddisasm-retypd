@@ -50,7 +50,7 @@ def test_sink_logic_operation_4(result):
 
 @pytest.mark.commit
 @table_test("add RAX, RBX", gtirb.Module.ISA.X64)
-def test_sink_artihmetic_operation_1(result):
+def test_sink_arithmetic_operation_1(result):
     """Test that addition gets type sinked correctly"""
     result.assertContains("typesink", (0x4000, "DEST", "int", "typesink op"))
     result.assertContains("typesink", (0x4000, "SRC", "int", "typesink op"))
@@ -58,7 +58,7 @@ def test_sink_artihmetic_operation_1(result):
 
 @pytest.mark.commit
 @table_test("sub RAX, RBX", gtirb.Module.ISA.X64)
-def test_sink_artihmetic_operation_2(result):
+def test_sink_arithmetic_operation_2(result):
     """Test that subtract gets type sinked correctly"""
     result.assertContains("typesink", (0x4000, "DEST", "int", "typesink op"))
     result.assertContains("typesink", (0x4000, "SRC", "int", "typesink op"))
@@ -72,10 +72,17 @@ def test_sink_artihmetic_operation_2(result):
     """,
     gtirb.Module.ISA.X64,
 )
-def test_sink_artihmetic_operation_3(result):
+def test_sink_arithmetic_operation_3(result):
     """Test that signed multiply gets type sinked correctly"""
     result.assertContains("typesink", (0x4003, "DEST", "int", "typesink op"))
     result.assertContains("typesink", (0x4003, "SRC", "int", "typesink op"))
+
+
+@pytest.mark.commit
+@table_test("sub RAX, RAX", gtirb.Module.ISA.X64)
+def test_sink_arithmetic_operation_4(result):
+    """Test that SUB zero-idiom gets type sinked correctly"""
+    result.assertNotContains("typesink", (0x4000, None, None, None))
 
 
 @pytest.mark.commit
