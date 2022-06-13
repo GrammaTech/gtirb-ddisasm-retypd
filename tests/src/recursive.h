@@ -4,27 +4,6 @@ struct recursive_type {
     int padding;
     struct recursive_type* recursive;
 };
-/**
- * Generated constraints for test_recursive at -O1
- *
- * #[O1] RDI_1536 ⊑ RDI_1536.store.σ8@8
- * #[O1] test_recursive.in_0 ⊑ RDI_1536
- * #[O1] void ⊑ test_recursive.out
- */
-/**
- * Generated constraints for test_recursive at -O2
- *
- * #[O2] RDI_1558 ⊑ RDI_1558.store.σ8@8
- * #[O2] test_recursive.in_0 ⊑ RDI_1558
- * #[O2] void ⊑ test_recursive.out
- */
-/**
- * Generated constraints for test_recursive at -O3
- *
- * #[O3] RDI_1558 ⊑ RDI_1558.store.σ8@8
- * #[O3] test_recursive.in_0 ⊑ RDI_1558
- * #[O3] void ⊑ test_recursive.out
- */
 
 /**
  * Derived constraints for test_recursive
@@ -35,4 +14,6 @@ struct recursive_type {
  *! test_recursive.in_0 ⊑ test_recursive.in_0.store.σ8@8
  *! test_recursive.in_0.store.σ8@8.store.σ8@8 ⊑ test_recursive.in_0.store.σ8@8
  */
-void test_recursive(struct recursive_type* type);
+void test_recursive_store(struct recursive_type* type);
+
+int test_recursive_load(struct recursive_type* type);

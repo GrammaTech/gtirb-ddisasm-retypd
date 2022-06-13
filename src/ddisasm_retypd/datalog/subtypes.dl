@@ -13,26 +13,25 @@ subtype(
     EA,
     "register-to-register"
 ) :-
-    arch.mov(EA),
+    move_instruction(EA),
 
     // Src
     instruction_get_src_op(EA, _, SrcOp),
     op_regdirect(SrcOp, SrcReg_untracked),
     track_register(SrcReg_untracked, Reg_src),
-    !arch.pc_register(Reg_src),
+    !pc_register(Reg_src),
 
     // Dest
     instruction_get_dest_op(EA, _, DestOp),
     op_regdirect(DestOp, DestReg_untracked),
     track_register(DestReg_untracked, Reg_dest),
-    !arch.pc_register(Reg_dest),
+    !pc_register(Reg_dest),
 
     Reg_dest != Reg_src,
 
     // Find Func
     block_instruction(EA, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    block_in_function_name(Block, Func).
 
 // Connect def and used for reg E.g.,
 //   EA_def:  mov Reg, xxx
@@ -52,36 +51,30 @@ subtype(
     track_register(Reg_untracked, Reg),
 
     block_instruction(EA_def, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    block_in_function_name(Block, Func).
 
 // Generate type sink information for registers at a given EA.
-subtype(
-    Func,
-    $Subtype(
-        [$RegAt(Reg, EA), nil],
-        [$Sink(Sink), nil]
-    ),
-    EA,
-    "register-to-sink"
-) :-
+subtype(Func, $Subtype(lhs, rhs), EA, "register-to-sink") :-
     (
         typesink(EA, "DEST", Sink, _),
-        instruction_get_src_op(EA, _, Op),
-        op_regdirect(Op, Reg_untracked)
+        instruction_get_dest_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked),
+        lhs = [$Sink(Sink), nil],
+        rhs = [$RegAt(Reg, EA), nil]
         ;
         typesink(EA, "SRC", Sink, _),
-        instruction_get_dest_op(EA, _, Op),
-        op_regdirect(Op, Reg_untracked)
+        instruction_get_src_op(EA, _, Op),
+        op_regdirect(Op, Reg_untracked),
+        lhs = [$RegAt(Reg, EA), nil],
+        rhs = [$Sink(Sink), nil]
     ),
 
     track_register(Reg_untracked, Reg),
-    !arch.pc_register(Reg),
+    !pc_register(Reg),
 
     // Find Func
     block_instruction(EA, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    block_in_function_name(Block, Func).
 
 // Memory access subtype relations, e.g. (in the case of Mode="store"):
 //     EA_base_def:   mov Reg, ***
@@ -89,7 +82,7 @@ subtype(
 //     EA:            mov nbyte [Base+Offset], Reg
 // subtype_mem_reg(Mode, Func, EA, Reg, Base, Offset, NBytes):-
 subtype(Func, $Subtype(lhs, rhs), EA, "register-to-memory") :-
-    arch.mov(EA),
+    move_instruction(EA),
     memory_access(Mode, EA, Base, Offset, NBytes),
     (
         Mode="load",
@@ -108,8 +101,7 @@ subtype(Func, $Subtype(lhs, rhs), EA, "register-to-memory") :-
     ),
 
     block_instruction(EA, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    block_in_function_name(Block, Func).
 
 // Memory access to type sink relations
 subtype(Func, $Subtype(lhs, rhs), EA, "memory-to-sink") :-
@@ -126,8 +118,7 @@ subtype(Func, $Subtype(lhs, rhs), EA, "memory-to-sink") :-
         rhs = [$RegAt(Base, EA), [$Store(), [$Deref(NBytes, Offset), nil]]]
     ),
     block_instruction(EA, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    block_in_function_name(Block, Func).
 
 // Connect incoming formal arguments to their local uses intraprocedurally
 subtype(
@@ -167,6 +158,19 @@ subtype(
 ) :-
     writes_argument_before_call(Func, EA_def, Reg, Callee, Index).
 
+// Connect writes to a return to the function's return path
+subtype(
+    Func,
+    $Subtype(
+        [$RegAt(Reg, EA_def), nil],
+        [$Global(Func), [$Out(), nil]]
+    ),
+    EA_def,
+    "register-to-return"
+) :-
+    writes_return_value(Func, EA_def),
+    explicit_writes_register(EA_def, Reg).
+
 // Give a subtype relation for the functions that have no returns for a cleaner
 // type output from retypd
 subtype(
@@ -178,7 +182,7 @@ subtype(
     0,
     "func-to-void"
 ) :-
-    function_symbol(_, Func),
+    function_inference.function_entry_name(_, Func),
     !writes_return_value(Func, _).
 
 subtype(
@@ -192,5 +196,4 @@ subtype(
 ) :-
     reg_call(EA, Reg),
     block_instruction(EA, Block),
-    function_inference.in_function(Block, Func_addr),
-    function_symbol(Func_addr, Func).
+    block_in_function_name(Block, Func).

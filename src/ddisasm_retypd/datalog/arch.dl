@@ -105,9 +105,28 @@ pop(EA) :-
 
 // Per-opcode typesinking
 .decl typesink_operation(Operation:symbol, Sink:lattice_type)
-typesink_operation(Operation, "int") :- arch.arithmetic_operation(Operation).
+
+// Signed opcodes
+typesink_operation("ADD", "int"),
+typesink_operation("SUB", "int"),
+typesink_operation("INC", "int"),
+typesink_operation("DEC", "int"),
+typesink_operation("IMUL", "int"),
+typesink_operation("SAR", "int"),
+typesink_operation("SAL", "int"),
+typesink_operation("IDIV", "int"),
+// Unsigned opcodes
+typesink_operation("SHL", "uint"),
+typesink_operation("SHR", "uint"),
+typesink_operation("ROR", "uint"),
+typesink_operation("ROL", "uint"),
+typesink_operation("RCR", "uint"),
+typesink_operation("RCL", "uint"),
+typesink_operation("SHR", "uint"),
+typesink_operation("SHL", "uint"),
 typesink_operation("AND", "uint"),
 typesink_operation("OR", "uint"),
+typesink_operation("NOT", "uint"),
 typesink_operation("XOR", "uint") :- binary_isa("X86") ; binary_isa("X64").
 
 // Which register to track as the flags
@@ -247,3 +266,15 @@ register_info("EFLAGS", "EFLAGS", 0, 4)  :- binary_isa("X86").
 .decl track_register(TrackedRegister:register, Register:register)
 track_register(TrackedRegister, Register) :-
     register_info(TrackedRegister, Register, _, _).
+
+.decl frame_pointer(reg:register)
+frame_pointer("EBP") :- binary_isa("X86").
+frame_pointer("RBP") :- binary_isa("X64").
+
+.decl stack_pointer(reg:register)
+stack_pointer("ESP") :- binary_isa("X86").
+stack_pointer("RSP") :- binary_isa("X64").
+
+.decl pc_register(reg:register)
+pc_register("EIP") :- binary_isa("X86").
+pc_register("RIP") :- binary_isa("X64").

@@ -22,9 +22,6 @@
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
 
-.decl function_symbol(ea:address, name:symbol)
-.input function_symbol
-
 .decl reg_call(src:address, reg:register)
 .input reg_call
 
@@ -41,23 +38,8 @@
     .decl pointer_size(N: unsigned)
     .input pointer_size
 
-    .decl mov(EA:address)
-    .input mov
-
     .decl read_only_operation(Operation:symbol)
     .input read_only_operation
-
-    .decl pc_register(reg:register)
-    .input pc_register
-
-    .decl frame_pointer(reg:register)
-    .input frame_pointer
-
-    .decl stack_pointer(reg:register)
-    .input stack_pointer
-
-    .decl arithmetic_operation(Operation:symbol)
-    .input arithmetic_operation
 
     .decl call_operation(Operation:symbol)
     .input call_operation
@@ -107,6 +89,9 @@
 .comp abs_function_inference {
     .decl in_function(Block:address, Function:address)
     .input in_function
+
+    .decl function_entry_name(ea:address, name:symbol)
+    .input function_entry_name
 }
 
 .init function_inference = abs_function_inference
@@ -162,7 +147,7 @@ instruction_get_src_op(EA,2,Op):-
 instruction_get_src_op(EA,Index,Op2):-
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
-    !arch.mov(EA),
+    !move_instruction(EA),
     !arch.op_does_not_read_dest_reg(Operation),
     !arch.write_only_operation(Operation).
 

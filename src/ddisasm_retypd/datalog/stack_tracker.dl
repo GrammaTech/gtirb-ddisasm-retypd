@@ -42,7 +42,7 @@ stack_edge(PrevEA, EA, HasPrev) :-
     next_instruction(PrevEA, EA),
     HasPrev = 1
     ;
-    function_symbol(EA, _),
+    function_inference.function_entry_name(EA, _),
     PrevEA = 0,
     HasPrev = 0.
 
@@ -59,7 +59,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         pop(EA),
         Mult=1
     ),
-    arch.stack_pointer(Reg),
+    stack_pointer(Reg),
     (
         HasPrev = 1,
         stack_pointer_tracking(PrevEA, Reg, PrevDepth)
@@ -82,11 +82,9 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     (
         arch.reg_arithmetic_operation(EA, Reg, SrcReg, 1, Delta)
         ;
-        instruction_get_operation(EA, Op),
-        arch.move_operation(Op),
+        move_instruction(EA),
         Delta=0
     ),
-
     (
         // ... and SrcReg is a stack reg from previous instruction ...
         HasPrev=1,
@@ -95,7 +93,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         ;
         // ... and SrcReg is the implicitly passed stack pointer ...
         HasPrev=0,
-        (arch.stack_pointer(SrcReg) ; arch.frame_pointer(SrcReg)),
+        (stack_pointer(SrcReg) ; frame_pointer(SrcReg)),
         PrevDepth=0
     ),
 
@@ -108,7 +106,7 @@ stack_pointer_tracking(EA, Reg, Depth) :-
     (
         // Let stack pointers in PUSH/POP be handled by their handler
         (pop(EA) ; push(EA)),
-        !arch.stack_pointer(Reg)
+        !stack_pointer(Reg)
         ;
         // If we're not pushing and popping...
         !pop(EA),
@@ -119,19 +117,17 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         !register_access(EA, "Writes", _)
         ;
         // ... and if we do write...
-        register_access(EA, "Writes", Reg),
+        register_access(EA, "Writes", WrittenReg),
         (
             // ... to something thats not frame/stack ...
             HasPrev = 1,
             stack_pointer_tracking(PrevEA, PrevReg, Depth),
-            PrevReg != Reg
+            PrevReg != WrittenReg
             ;
             // ... to something thats not the default initialized stack ...
             HasPrev = 0,
-            arch.frame_pointer(FrameReg),
-            Reg != FrameReg,
-            arch.stack_pointer(StackReg),
-            Reg != StackReg
+            !frame_pointer(WrittenReg),
+            !stack_pointer(WrittenReg)
         )
     ),
     (
@@ -142,9 +138,9 @@ stack_pointer_tracking(EA, Reg, Depth) :-
         // ... initialize the frame/stack pointer to Depth = 0
         HasPrev = 0,
         (
-            arch.frame_pointer(Reg)
+            frame_pointer(Reg)
             ;
-            arch.stack_pointer(Reg)
+            stack_pointer(Reg)
         ),
         reaches_without_write(EA, Reg),
         Depth = 0
