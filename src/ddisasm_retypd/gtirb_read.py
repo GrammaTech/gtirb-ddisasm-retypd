@@ -185,7 +185,7 @@ class RetypdGtirbReader:
         """Generate constraints for a type that is a pointer
         :parma deref: DTV that is the source of this type
         :param side: Which side of the constraint is this pointer on
-        :param poointer_type: The pointer type object itself
+        :param pointer_type: The pointer type object itself
         :param output: Set of constraints to write to
         """
         pointed_to = pointer_type.pointed_to
