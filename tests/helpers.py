@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from ddisasm_retypd import DdisasmRetypd
 from gtirb_generate_python_code.generate import generate_test_setup
 from gtirb_rewriting import X86Syntax
+from gtirb_types import GtirbTypes
 import gtirb
 import gtirb_test_helpers
 import io
@@ -190,22 +191,43 @@ class ResultObject:
 
 
 def table_test(
-    assembly_str: str, isa: gtirb.Module.ISA, functions: List[str] = []
+    assembly_str: str,
+    isa: gtirb.Module.ISA,
+    functions: List[str] = [],
+    type_constructor: Callable[[gtirb.Module], GtirbTypes] = None,
+    give_types: bool = False,
 ):
     """Annotation for a given function which tests ddisasm-retypd's internal
-        tables
+        tables. Give the result as a ResultObject in the result fixture
+        argument.
     :param assembly_str: Assembly string of the program to test
     :param isa: ISA of the program's assembly
     :param functions: List of symbols to be defined as functions
+    :param type_constructor: gtirb-types constructor to use
+    :param give_types: Give calculated types as a test fixture or not
     """
 
     def wrapper(func):
         ir = assembly_to_ddisasm(assembly_str, isa, functions)
 
+        if type_constructor is not None:
+            # Re-initialize GtirbTypes object with our newly generated IR, then
+            # save to AuxData so that when we invoke gtirb-ddisasm-retypd we it
+            # is present.
+            existing_types = type_constructor(ir.modules[0])
+            existing_types.save()
+
         with tempfile.TemporaryDirectory() as td_:
             td = Path(td_)
-            DdisasmRetypd(ir, td)(td)
+            types = DdisasmRetypd(ir, td)(td)
 
-            return pytest.mark.parametrize("result", [ResultObject(td)])(func)
+            wrapped = pytest.mark.parametrize("result", [ResultObject(td)])(
+                func
+            )
+
+            if give_types:
+                wrapped = pytest.mark.parametrize("types", [types])(wrapped)
+
+            return wrapped
 
     return wrapper

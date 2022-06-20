@@ -76,13 +76,11 @@ def get_callgraph(ir: gtirb.IR) -> Dict[str, Set[str]]:
     return callgraph
 
 
-def get_arch_sizes(ir: gtirb.IR) -> Tuple[int, int]:
-    """Address and register sizes for a given IR's ISA
-    :param ir: GTIRB IR to read from, only uses module 0 for now
+def get_arch_sizes(module: gtirb.Module) -> Tuple[int, int]:
+    """Address and register sizes for a given module's ISA
+    :param module: GTIRB Module to read from
     :returns: (ptr, reg) sizes in bits
     """
-    module = ir.modules[0]
-
     if module.isa in (
         gtirb.module.Module.ISA.X64,
         gtirb.module.Module.ISA.ARM64,
@@ -254,5 +252,5 @@ def extract_arch_relations(ir: gtirb.IR, directory: Path):
     :param ir: IR that is being loaded
     :param directory: Directory to output facts to
     """
-    pointer, _ = get_arch_sizes(ir)
+    pointer, _ = get_arch_sizes(ir.modules[0])
     (directory / "arch.pointer_size.facts").write_text(str(pointer))

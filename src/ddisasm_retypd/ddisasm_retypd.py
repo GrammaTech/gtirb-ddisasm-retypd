@@ -32,8 +32,9 @@ from ddisasm_retypd.ddisasm import (
     get_arch_sizes,
     get_callgraph,
 )
+from ddisasm_retypd.gtirb_read import RetypdGtirbReader
+from ddisasm_retypd.gtirb_write import RetypdGtirbWriter
 from ddisasm_retypd.souffle import execute_souffle
-from ddisasm_retypd.gtirb import RetypdGtirbWriter
 
 from collections import defaultdict
 from pathlib import Path
@@ -57,6 +58,8 @@ class DdisasmRetypd:
         self.callgraph = get_callgraph(ir)
         self.facts_dir = facts_dir
         self.var_set = set()
+        self.lattice = CLattice()
+        self.lattice_ctypes = CLatticeCTypes()
 
     def _exec_souffle(
         self,
@@ -174,7 +177,26 @@ class DdisasmRetypd:
         constraint_map = self._insert_subtypes(
             debug_dir is not None, debug_categories
         )
-        program = Program(CLattice(), {}, constraint_map, self.callgraph)
+
+        # Load gtirb-type information to constraints if possible
+        for module in self.ir.modules:
+            reader = RetypdGtirbReader(module)
+            for name, constraint_set in reader.load_all().items():
+                if name in constraint_map:
+                    logging.info(
+                        f"Ignoring {name} generated constraints, gtirb-type "
+                        "information is already populated"
+                    )
+                constraint_map[name] = constraint_set
+
+            # Use new lattices with opaque types supported
+            # TODO: This currently re-generates per-module, so prior modules
+            # wont be taken into account. This doesn't really matter right now
+            # since almost all GTIRB is 1-module, but if it ever comes up this
+            # should change.
+            self.lattice, self.lattice_ctypes = reader.generate_lattices()
+
+        program = Program(self.lattice, {}, constraint_map, self.callgraph)
 
         logging.info("Solving constraints")
         loglevel = LogLevel.DEBUG if debug_dir else LogLevel.QUIET
@@ -213,15 +235,15 @@ class DdisasmRetypd:
             comments for the output GTIRB
         :returns: Dictionary of DTV to generated C-type
         """
-        addr_size, reg_size = get_arch_sizes(self.ir)
+        addr_size, reg_size = get_arch_sizes(self.ir.modules[0])
         _, sketches = self._solve_constraints(
             debug_dir, compiled, debug_categories
         )
 
         gen = CTypeGenerator(
             sketches,
-            CLattice(),
-            CLatticeCTypes(),
+            self.lattice,
+            self.lattice_ctypes,
             reg_size,
             addr_size,
             verbose=LogLevel.DEBUG if debug_dir else LogLevel.QUIET,
@@ -298,8 +320,10 @@ def main():
     if args.debug_dir is not None:
         print_user_types(type_outs)
 
-    writer = RetypdGtirbWriter(ir.modules[0])
-    writer.add_types(type_outs)
+    for module in ir.modules:
+        writer = RetypdGtirbWriter(module)
+        writer.add_types(type_outs)
+
     ir.save_protobuf(str(args.dest))
 
 
